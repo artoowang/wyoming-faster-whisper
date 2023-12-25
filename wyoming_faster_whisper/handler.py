@@ -41,6 +41,7 @@ class FasterWhisperEventHandler(AsyncEventHandler):
         self._language = self.cli_args.language
 
     async def handle_event(self, event: Event) -> bool:
+        _LOGGER.debug(f"Handle event: {event}")
         if Describe.is_type(event.type):
             await self.write_event(self.wyoming_info_event)
             _LOGGER.debug("Sent info")

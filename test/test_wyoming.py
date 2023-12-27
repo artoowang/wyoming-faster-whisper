@@ -15,7 +15,8 @@ def get_test_data() -> Generator[bytes, None, None]:
     CHUNK_LENGTH_IN_SECONDS = 1
     CHUNK_SAMPLES = CHUNK_LENGTH_IN_SECONDS * SAMPLE_RATE
 
-    audio_data_fp32 = whisper.load_audio('play-recording.wav')
+    # audio_data_fp32 = whisper.load_audio('play-recording.wav')
+    audio_data_fp32 = whisper.load_audio('Does the Past Still Exist.mp4')
     assert audio_data_fp32.dtype == np.float32
     assert len(audio_data_fp32.shape) == 1
     print(f'Loaded {audio_data_fp32.size} samples of audio data.')

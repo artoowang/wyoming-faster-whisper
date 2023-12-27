@@ -7,7 +7,7 @@ import numpy as np
 import pdb
 import whisper
 
-WYOMING_IP = '0.0.0.0'
+WYOMING_IP = '127.0.0.1'
 WYOMING_PORT = 10300
 
 async def run():

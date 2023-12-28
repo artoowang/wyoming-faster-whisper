@@ -14,6 +14,9 @@ from .download import FasterWhisperModel, download_model, find_model
 from .faster_whisper import WhisperModel
 from .handler import FasterWhisperEventHandler
 
+import torch
+import whisper
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -108,13 +111,18 @@ async def main() -> None:
         ],
     )
 
-    # Load converted faster-whisper model
-    _LOGGER.debug("Loading %s", model_dir)
-    whisper_model = WhisperModel(
-        str(model_dir),
-        device=args.device,
-        compute_type=args.compute_type,
-    )
+    whisper_model = None
+    # TODO: Maybe make this configurable.
+    # # Load converted faster-whisper model
+    # _LOGGER.debug("Loading %s", model_dir)
+    # whisper_model = WhisperModel(
+    #     str(model_dir),
+    #     device=args.device,
+    #     compute_type=args.compute_type,
+    # )
+
+    _LOGGER.debug(f"Loading OpenAI model {args.model} ...")
+    openai_whisper_model = whisper.load_model(args.model, "cpu")
 
     server = AsyncServer.from_uri(args.uri)
     _LOGGER.info("Ready")
@@ -125,6 +133,7 @@ async def main() -> None:
             wyoming_info,
             args,
             whisper_model,
+            openai_whisper_model,
             model_lock,
         )
     )

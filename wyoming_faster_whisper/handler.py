@@ -11,6 +11,9 @@ from wyoming.server import AsyncEventHandler
 
 from .faster_whisper import WhisperModel
 
+import numpy as np
+import whisper
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -22,6 +25,7 @@ class FasterWhisperEventHandler(AsyncEventHandler):
         wyoming_info: Info,
         cli_args: argparse.Namespace,
         model: WhisperModel,
+        openai_whisper_model: whisper.Whisper,
         model_lock: asyncio.Lock,
         *args,
         **kwargs,
@@ -31,6 +35,7 @@ class FasterWhisperEventHandler(AsyncEventHandler):
         self.cli_args = cli_args
         self.wyoming_info_event = wyoming_info.event()
         self.model = model
+        self.openai_whisper_model = openai_whisper_model
         self.model_lock = model_lock
         self.audio = bytes()
         self.audio_converter = AudioChunkConverter(
@@ -67,13 +72,17 @@ class FasterWhisperEventHandler(AsyncEventHandler):
         if AudioStop.is_type(event.type):
             _LOGGER.debug("Audio stopped")
             async with self.model_lock:
-                segments, _info = self.model.transcribe(
-                    self.audio,
-                    beam_size=self.cli_args.beam_size,
-                    language=self._language,
-                )
+                # segments, _info = self.model.transcribe(
+                #     self.audio,
+                #     beam_size=self.cli_args.beam_size,
+                #     language=self._language,
+                # )
+                audio_samples = np.frombuffer(self.audio, dtype=np.int16)
+                audio_samples_fp32 = audio_samples.astype(np.float32) / 32768.0
+                result = whisper.transcribe(self.openai_whisper_model, audio_samples_fp32, language=self._language)
 
-            text = " ".join(segment.text for segment in segments)
+            # text = " ".join(segment.text for segment in segments)
+            text = result["text"]
             _LOGGER.info(text)
 
             await self.write_event(Transcript(text=text).event())

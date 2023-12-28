@@ -121,8 +121,9 @@ async def main() -> None:
     #     compute_type=args.compute_type,
     # )
 
+    assert torch.cuda.is_available()
     _LOGGER.debug(f"Loading OpenAI model {args.model} ...")
-    openai_whisper_model = whisper.load_model(args.model, "cpu")
+    openai_whisper_model = whisper.load_model(args.model, "cuda:0")
 
     server = AsyncServer.from_uri(args.uri)
     _LOGGER.info("Ready")

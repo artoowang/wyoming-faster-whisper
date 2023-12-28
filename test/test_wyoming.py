@@ -5,6 +5,7 @@ from wyoming.event import Event
 import asyncio
 import numpy as np
 import pdb
+import time
 import whisper
 
 WYOMING_IP = '127.0.0.1'
@@ -46,8 +47,11 @@ async def run():
             print(f'Write {len(audio_data)} bytes.')
             await client.write_event(Event('audio-chunk', audio_metadata, audio_data))
         await client.write_event(Event('audio-stop', audio_metadata))
+        start_time = time.time()
         result = await client.read_event()
+        execution_time = time.time() - start_time
         print(result)
+        print(f'execution_time: {execution_time}')
 
 asyncio.run(run())
 

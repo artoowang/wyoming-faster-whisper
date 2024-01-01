@@ -88,8 +88,8 @@ async def main() -> None:
     wyoming_info = Info(
         asr=[
             AsrProgram(
-                name="faster-whisper",
-                description="Faster Whisper transcription with CTranslate2",
+                name="openai-whisper-gpu",
+                description="Faster Whisper transcription with OpenAI and GPU",
                 attribution=Attribution(
                     name="Guillaume Klein",
                     url="https://github.com/guillaumekln/faster-whisper/",

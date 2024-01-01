@@ -2,22 +2,20 @@ from typing import Generator
 from wyoming.client import AsyncTcpClient
 from wyoming.event import Event
 
+import argparse
 import asyncio
 import numpy as np
-import pdb
 import time
 import whisper
 
-WYOMING_IP = '127.0.0.1'
-WYOMING_PORT = 10300
+DEFAULT_AUDIO_FILE = 'play-recording.wav'
 SAMPLE_RATE = 16000
 
 def get_test_data() -> Generator[bytes, None, None]:
     CHUNK_LENGTH_IN_SECONDS = 1
     CHUNK_SAMPLES = CHUNK_LENGTH_IN_SECONDS * SAMPLE_RATE
 
-    # audio_data_fp32 = whisper.load_audio('play-recording.wav')
-    audio_data_fp32 = whisper.load_audio('Does the Past Still Exist.mp4')
+    audio_data_fp32 = whisper.load_audio(args.audio_file)
     assert audio_data_fp32.dtype == np.float32
     assert len(audio_data_fp32.shape) == 1
     print(f'Loaded {audio_data_fp32.size} samples of audio data.')
@@ -31,7 +29,7 @@ def get_test_data() -> Generator[bytes, None, None]:
         yield audio_data
 
 async def run():
-    async with AsyncTcpClient(WYOMING_IP, WYOMING_PORT) as client:
+    async with AsyncTcpClient(args.ip, int(args.port)) as client:
         await client.write_event(Event('describe'))
         result = await client.read_event()
         print(result)
@@ -52,5 +50,12 @@ async def run():
         execution_time = time.time() - start_time
         print(result)
         print(f'execution_time: {execution_time}')
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--ip", required=True)
+parser.add_argument("--port", required=True)
+parser.add_argument("--audio_file", default=DEFAULT_AUDIO_FILE)
+parser.add_argument("--debug", action="store_true")
+args = parser.parse_args()
 
 asyncio.run(run())

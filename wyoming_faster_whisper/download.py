@@ -26,6 +26,11 @@ class FasterWhisperModel(str, Enum):
     MEDIUM = "medium"
     MEDIUM_INT8 = "medium-int8"
 
+    # It seems we need to explicitly declare this on WSL2, or otherwise
+    # it will return something like "FasterWhisperModel.SMALL".
+    def __str__(self):
+        return self.value
+
 
 EXPECTED_HASHES = {
     FasterWhisperModel.TINY: {

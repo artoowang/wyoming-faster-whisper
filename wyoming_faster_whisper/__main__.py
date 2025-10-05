@@ -27,14 +27,8 @@ async def main() -> None:
     )
     parser.add_argument("--uri", required=True, help="unix:// or tcp://")
     parser.add_argument(
-        "--data-dir",
-        required=True,
-        action="append",
-        help="Data directory to check for downloaded models",
-    )
-    parser.add_argument(
         "--download-dir",
-        help="Directory to download models into (default: first data dir)",
+        help="Directory to download models into",
     )
     parser.add_argument(
         "--device",
@@ -61,9 +55,9 @@ async def main() -> None:
         help="Optional text to provide as a prompt for the first window",
     )
     parser.add_argument(
-        "--use-transformers",
-        action="store_true",
-        help="Use HuggingFace transformers library (requires transformers extras)",
+        "--model-type",
+        default="kyutai-stt",
+        help="Model type: kyutai-stt (default), faster-whisper, or transformer",
     )
     parser.add_argument(
         "--local-files-only",
@@ -82,10 +76,6 @@ async def main() -> None:
         help="Print version and exit",
     )
     args = parser.parse_args()
-
-    if not args.download_dir:
-        # Download to first data dir by default
-        args.download_dir = args.data_dir[0]
 
     logging.basicConfig(
         level=logging.DEBUG if args.debug else logging.INFO, format=args.log_format
@@ -144,38 +134,21 @@ async def main() -> None:
         ],
     )
 
-    # Load model
-    _LOGGER.debug("Loading %s", args.model)
-    whisper_model: Any = None
-
-    if args.use_transformers:
-        # Use HuggingFace transformers
-        from .transformers_whisper import TransformersWhisperModel
-
-        whisper_model = TransformersWhisperModel(
-            args.model, args.download_dir, args.local_files_only
-        )
-    else:
-        # Use faster-whisper
-        whisper_model = faster_whisper.WhisperModel(
-            args.model,
-            download_root=args.download_dir,
-            device=args.device,
-            compute_type=args.compute_type,
-        )
-
     server = AsyncServer.from_uri(args.uri)
-    _LOGGER.info("Ready")
     model_lock = asyncio.Lock()
 
-    if args.use_transformers:
+    if args.model_type == "transformer":
+        _LOGGER.debug("Loading %s", args.model)
         # Use HuggingFace transformers
         from .transformers_whisper import (
             TransformersWhisperEventHandler,
             TransformersWhisperModel,
         )
-
-        assert isinstance(whisper_model, TransformersWhisperModel)
+        assert args.download_dir
+        model = TransformersWhisperModel(
+            args.model, args.download_dir, args.local_files_only
+        )
+        _LOGGER.info("Ready")
 
         # TODO: initial prompt
         await server.run(
@@ -184,23 +157,54 @@ async def main() -> None:
                 wyoming_info,
                 args.language,
                 args.beam_size,
-                whisper_model,
+                model,
                 model_lock,
             )
         )
-    else:
+    elif args.model_type == "faster-whisper":
+        _LOGGER.debug("Loading %s", args.model)
         # Use faster-whisper
-        assert isinstance(whisper_model, faster_whisper.WhisperModel)
+        assert args.download_dir
+        model = faster_whisper.WhisperModel(
+            args.model,
+            download_root=args.download_dir,
+            device=args.device,
+            compute_type=args.compute_type,
+        )
+        _LOGGER.info("Ready")
+
         await server.run(
             partial(
                 FasterWhisperEventHandler,
                 wyoming_info,
                 args,
-                whisper_model,
+                model,
                 model_lock,
                 initial_prompt=args.initial_prompt,
             )
         )
+    elif args.model_type == "kyutai-stt":
+        # Use Kyutai STT
+        from .kyutai_stt_handler import (
+            KyutaiSttEventHandler,
+            KyutaiSttModel,
+        )
+        _LOGGER.debug("Loading %s", args.model)
+        model = KyutaiSttModel(hf_repo=args.model)
+        _LOGGER.info("Ready")
+
+        await server.run(
+            partial(
+                KyutaiSttEventHandler,
+                wyoming_info,
+                args,
+                model,
+                model_lock,
+                initial_prompt=args.initial_prompt,
+            )
+        )
+    else:
+        raise ValueError(f"Unsupported model type: {args.model_type}")
 
 
 # -----------------------------------------------------------------------------

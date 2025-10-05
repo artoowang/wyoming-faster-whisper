@@ -23,7 +23,8 @@ classifiers = [
 ]
 dependencies = [
     "wyoming>=1.5.3",
-    "faster-whisper>=1.1.0,<2"
+    "faster-whisper>=1.1.0,<2",
+    "moshi_mlx>=0.3.0"
 ]
 
 [project.urls]

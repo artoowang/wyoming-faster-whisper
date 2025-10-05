@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 import wave
 from typing import Optional
 
@@ -34,7 +35,7 @@ class KyutaiSttModel:
         with open(lm_config, "r") as fobj:
             lm_config = json.load(fobj)
         _LOGGER.info(f"lm_config:\n{lm_config}")
-        stt_config = lm_config.get("stt_config", None)
+        self._stt_config = lm_config.get("stt_config", None)
 
         mimi_weights = hf_hub_download(hf_repo, lm_config["mimi_name"])
         moshi_name = lm_config.get("moshi_name", "model.safetensors")
@@ -72,11 +73,58 @@ class KyutaiSttModel:
         model.warmup(ct)
         _LOGGER.info("done warming up the model")
 
+        self._model = model
+        self._audio_tokenizer = audio_tokenizer
+        self._text_tokenizer = text_tokenizer
+
 
     def transcribe(self, audio_path: str) -> str:
         audio, _ = sphn.read(audio_path, sample_rate=_SAMPLE_RATE)
         assert audio.ndim == 2 and audio.shape[0] == 1, "Expected mono audio"
-        return "Test transcription"
+
+        if self._stt_config is not None:
+            pad_left = self._stt_config.get("audio_silence_prefix_seconds", 0.0)
+            pad_left = int(pad_left * _SAMPLE_RATE)
+            pad_right = self._stt_config.get("audio_delay_seconds", 0.0)
+            pad_right = int((pad_right + 1.0) * _SAMPLE_RATE)
+            audio = mx.concat([
+                mx.zeros((1, pad_left)),
+                mx.array(audio),
+                mx.zeros((1, pad_right)),
+            ], axis=-1)
+        else:
+            # This was the original padding used, not sure why.
+            audio = mx.concat([mx.array(audio), mx.zeros((1, 48000))], axis=-1)
+
+        steps = audio.shape[-1] // 1920
+        gen = models.LmGen(
+            model=self._model,
+            max_steps=steps,
+            text_sampler=utils.Sampler(top_k=25, temp=0),
+            audio_sampler=utils.Sampler(top_k=250, temp=0.8),
+            check=False,
+        )
+
+        _LOGGER.info(f"starting inference (audio.shape: {audio.shape})")
+        start_time = time.time()
+        text = ""
+        for start_idx in range(0, steps * 1920, 1920):
+            block = audio[:, None, start_idx : start_idx + 1920]
+            other_audio_tokens = self._audio_tokenizer.encode_step(block).transpose(0, 2, 1)
+            text_token = gen.step(other_audio_tokens[0])
+            text_token = text_token[0].item()
+            if text_token not in (0, 3):
+                text_piece = self._text_tokenizer.id_to_piece(text_token)  # type: ignore
+                text_piece = text_piece.replace("▁", " ")
+                print(text_piece, end="", flush=True)
+                text += text_piece
+        # Switch to new line after individual pieces are printed.
+        print()
+        inference_seconds = time.time() - start_time
+        steps_per_second = steps / (time.time() - start_time)
+        _LOGGER.info(f"inference time: {inference_seconds}s, steps: {steps}, steps per sec: {steps_per_second}")
+
+        return text
 
 
 class KyutaiSttEventHandler(AsyncEventHandler):

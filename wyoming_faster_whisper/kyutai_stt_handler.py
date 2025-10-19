@@ -116,10 +116,7 @@ class KyutaiSttModel:
             if text_token not in (0, 3):
                 text_piece = self._text_tokenizer.id_to_piece(text_token)  # type: ignore
                 text_piece = text_piece.replace("▁", " ")
-                print(text_piece, end="", flush=True)
                 text += text_piece
-        # Switch to new line after individual pieces are printed.
-        print()
         inference_seconds = time.time() - start_time
         steps_per_second = steps / (time.time() - start_time)
         _LOGGER.info(f"inference time: {inference_seconds}s, steps: {steps}, steps per sec: {steps_per_second}")
@@ -165,8 +162,15 @@ class KyutaiSttEventHandler(AsyncEventHandler):
             chunk = AudioChunk.from_event(event)
 
             if self._wav_file is None:
-                assert (chunk.rate == _SAMPLE_RATE,
-                        f"Only supports {_SAMPLE_RATE} Hz audio, but received {chunk.rate}")
+                assert chunk.rate == _SAMPLE_RATE, (
+                    f"Only supports {_SAMPLE_RATE} Hz audio, but received {chunk.rate}")
+                _LOGGER.debug(
+                    "Starting %s with rate=%d, width=%d, channels=%d",
+                    self._wav_path,
+                    chunk.rate,
+                    chunk.width,
+                    chunk.channels,
+                )
                 self._wav_file = wave.open(self._wav_path, "wb")
                 self._wav_file.setframerate(chunk.rate)
                 self._wav_file.setsampwidth(chunk.width)
@@ -176,10 +180,7 @@ class KyutaiSttEventHandler(AsyncEventHandler):
             return True
 
         if AudioStop.is_type(event.type):
-            _LOGGER.debug(
-                "Audio stopped. Transcribing with initial prompt=%s",
-                self.initial_prompt,
-            )
+            _LOGGER.debug("Audio stopped. Transcribing %s", self._wav_path)
             assert self._wav_file is not None
 
             self._wav_file.close()
@@ -188,7 +189,7 @@ class KyutaiSttEventHandler(AsyncEventHandler):
             async with self.model_lock:
                 text = self.model.transcribe(self._wav_path)
 
-            _LOGGER.info(text)
+            _LOGGER.info("Transciption: %s", text)
             await self.write_event(Transcript(text=text).event())
             _LOGGER.debug("Completed request")
 

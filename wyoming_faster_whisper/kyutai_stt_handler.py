@@ -11,10 +11,12 @@ from typing import Optional
 
 import mlx.core as mx
 import mlx.nn as nn
+import numpy as np
 import sentencepiece
 import sphn
 from huggingface_hub import hf_hub_download
 from moshi_mlx import models, utils
+from scipy.signal import resample
 
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStop
@@ -155,6 +157,7 @@ class KyutaiSttEventHandler(AsyncEventHandler):
         self._wav_dir = tempfile.TemporaryDirectory()
         self._wav_path = os.path.join(self._wav_dir.name, "speech.wav")
         self._wav_file: Optional[wave.Wave_write] = None
+        self._chunk_sample_rate: Optional[int] = None
 
 
     async def handle_event(self, event: Event) -> bool:
@@ -162,21 +165,28 @@ class KyutaiSttEventHandler(AsyncEventHandler):
             chunk = AudioChunk.from_event(event)
 
             if self._wav_file is None:
-                assert chunk.rate == _SAMPLE_RATE, (
-                    f"Only supports {_SAMPLE_RATE} Hz audio, but received {chunk.rate}")
+                assert chunk.width == 2, "Only supports 16-bit audio, but received width {chunk.width}"
+                assert chunk.channels == 1, "Only supports mono audio, but received {chunk.channels}"
+                self._chunk_sample_rate = chunk.rate
                 _LOGGER.debug(
-                    "Starting %s with rate=%d, width=%d, channels=%d",
+                    "Starting %s with rate=%d -> %d",
                     self._wav_path,
-                    chunk.rate,
-                    chunk.width,
-                    chunk.channels,
+                    self._chunk_sample_rate,
+                    _SAMPLE_RATE,
                 )
                 self._wav_file = wave.open(self._wav_path, "wb")
-                self._wav_file.setframerate(chunk.rate)
-                self._wav_file.setsampwidth(chunk.width)
-                self._wav_file.setnchannels(chunk.channels)
+                self._wav_file.setframerate(_SAMPLE_RATE)
+                self._wav_file.setsampwidth(2)
+                self._wav_file.setnchannels(1)
 
-            self._wav_file.writeframes(chunk.audio)
+            assert self._chunk_sample_rate is not None
+            if self._chunk_sample_rate != _SAMPLE_RATE:
+                input_chunk = np.frombuffer(chunk.audio, dtype=np.int16)
+                num_new_samples = int(len(input_chunk) * _SAMPLE_RATE / self._chunk_sample_rate)
+                resampled_chunk = resample(input_chunk, num_new_samples).astype(np.int16)
+                self._wav_file.writeframes(resampled_chunk)
+            else:
+                self._wav_file.writeframes(chunk.audio)
             return True
 
         if AudioStop.is_type(event.type):
@@ -185,6 +195,7 @@ class KyutaiSttEventHandler(AsyncEventHandler):
 
             self._wav_file.close()
             self._wav_file = None
+            self._chunk_sample_rate = None
 
             async with self.model_lock:
                 text = self.model.transcribe(self._wav_path)

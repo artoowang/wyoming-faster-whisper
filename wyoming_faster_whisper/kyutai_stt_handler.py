@@ -67,21 +67,35 @@ class KyutaiSttModel:
         audio_tokenizer.load_pytorch_weights(str(mimi_weights), strict=True)
 
         # Copied from moshi_mlx.run_inference.
-        if model.condition_provider is not None:
-            ct = model.condition_provider.condition_tensor("description", "very_good")
-        else:
-            ct = None
-
-        _LOGGER.info("warming up the model")
-        model.warmup(ct)
-        _LOGGER.info("done warming up the model")
+        # TODO: For now, we assume there is no condition provider. If there is
+        # indeed a condition provider, we need to send the result
+        # condition_tensor to transcribe().
+        assert model.condition_provider is None
+        # if model.condition_provider is not None:
+        #     ct = model.condition_provider.condition_tensor("description", "very_good")
+        # else:
+        #     ct = None
 
         self._model = model
         self._audio_tokenizer = audio_tokenizer
         self._text_tokenizer = text_tokenizer
 
+        self.reset()
+
+
+    def reset(self):
+        reset_start = time.time()
+        # From Copilot: Reset Mimi state so previous requests don't leak into this one.
+        # Use reset_all() to clear encoder/decoder caches and upsample/downsample state.
+        self._audio_tokenizer.reset_all()
+        # Assume there is no condition tensor.
+        self._model.warmup(ct=None)
+        _LOGGER.debug(f"Reset time: {time.time() - reset_start}s")
+
 
     def transcribe(self, audio_path: str) -> str:
+        # Assume reset() is called by the caller. Otherwise, transcribe may return
+        # different results due to cached states.
         audio, _ = sphn.read(audio_path, sample_rate=_SAMPLE_RATE)
         assert audio.ndim == 2 and audio.shape[0] == 1, "Expected mono audio"
 
@@ -98,10 +112,6 @@ class KyutaiSttModel:
         else:
             # This was the original padding used, not sure why.
             audio = mx.concat([mx.array(audio), mx.zeros((1, 48000))], axis=-1)
-
-        # From Copilot: Reset Mimi state so previous requests don't leak into this one.
-        # Use reset_all() to clear encoder/decoder caches and upsample/downsample state.
-        self._audio_tokenizer.reset_all()
 
         steps = audio.shape[-1] // 1920
         gen = models.LmGen(
@@ -230,6 +240,7 @@ class KyutaiSttEventHandler(AsyncEventHandler):
 
             # Reset
             self._language = self.cli_args.language
+            self.model.reset()
 
             return False
 

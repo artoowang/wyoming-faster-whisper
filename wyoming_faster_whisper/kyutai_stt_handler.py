@@ -99,6 +99,10 @@ class KyutaiSttModel:
             # This was the original padding used, not sure why.
             audio = mx.concat([mx.array(audio), mx.zeros((1, 48000))], axis=-1)
 
+        # From Copilot: Reset Mimi state so previous requests don't leak into this one.
+        # Use reset_all() to clear encoder/decoder caches and upsample/downsample state.
+        self._audio_tokenizer.reset_all()
+
         steps = audio.shape[-1] // 1920
         gen = models.LmGen(
             model=self._model,

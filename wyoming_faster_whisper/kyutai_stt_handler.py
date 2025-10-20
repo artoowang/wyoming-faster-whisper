@@ -7,6 +7,7 @@ import os
 import tempfile
 import time
 import wave
+import shutil
 from typing import Optional
 
 import mlx.core as mx
@@ -158,6 +159,7 @@ class KyutaiSttEventHandler(AsyncEventHandler):
         self._wav_path = os.path.join(self._wav_dir.name, "speech.wav")
         self._wav_file: Optional[wave.Wave_write] = None
         self._chunk_sample_rate: Optional[int] = None
+        self._wav_debug_dir = self.cli_args.audio_debug_dir
 
 
     async def handle_event(self, event: Event) -> bool:
@@ -196,6 +198,24 @@ class KyutaiSttEventHandler(AsyncEventHandler):
             self._wav_file.close()
             self._wav_file = None
             self._chunk_sample_rate = None
+
+            if self._wav_debug_dir is not None:
+                try:
+                    # Ensure the debug directory exists
+                    os.makedirs(self._wav_debug_dir, exist_ok=True)
+
+                    # Timestamp suffix with microseconds to avoid collisions
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    base = os.path.splitext(os.path.basename(self._wav_path))[0]
+                    dst_name = f"{base}_{timestamp}.wav"
+                    dst_path = os.path.join(self._wav_debug_dir, dst_name)
+
+                    # Use shutil.copy2 to preserve metadata
+                    shutil.copy2(self._wav_path, dst_path)
+
+                    _LOGGER.debug("WAV debug copy written to %s", dst_path)
+                except Exception as exc:
+                    _LOGGER.exception("Failed to write WAV debug copy: %s", exc)
 
             async with self.model_lock:
                 text = self.model.transcribe(self._wav_path)

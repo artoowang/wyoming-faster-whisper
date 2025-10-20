@@ -75,6 +75,11 @@ async def main() -> None:
         version=__version__,
         help="Print version and exit",
     )
+    parser.add_argument(
+        "--audio-debug-dir",
+        default=None,
+        help="When supplied, dump the resampled audio file to this directory for debugging.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(

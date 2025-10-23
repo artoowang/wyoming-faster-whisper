@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import logging
+import mlx.core as mx
 import platform
 import re
 from functools import partial
@@ -204,6 +205,30 @@ async def main() -> None:
                 wyoming_info,
                 args,
                 model,
+                model_lock,
+                initial_prompt=args.initial_prompt,
+            )
+        )
+    elif args.model_type == "whisper-mps":
+        # Use whisper-mps.
+        from .whisper_mps_event_handler import (
+            WhisperMpsEventHandler,
+        )
+        from whisper_mps.whisper.transcribe import ModelHolder
+
+        _LOGGER.debug("Loading %s", args.model)
+        # This preloads the model in ModelHolder, so later when whisper-mps
+        # tries to load the same model name, it will reuse the already loaded
+        # model.
+        # TODO: Hard coded fp16 for now. We can use args.compute_type later.
+        ModelHolder.get_model(args.model, mx.float16)
+        _LOGGER.info("Ready")
+
+        await server.run(
+            partial(
+                WhisperMpsEventHandler,
+                wyoming_info,
+                args,
                 model_lock,
                 initial_prompt=args.initial_prompt,
             )

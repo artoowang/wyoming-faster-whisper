@@ -197,6 +197,8 @@ class KyutaiSttEventHandler(AsyncEventHandler):
 
             assert self._chunk_sample_rate is not None
             if self._chunk_sample_rate != _SAMPLE_RATE:
+                # TODO: This is probably not a good resampling method. Use
+                # resample_poly instead? See whisper_mps_event_handler.py.
                 input_chunk = np.frombuffer(chunk.audio, dtype=np.int16)
                 num_new_samples = int(len(input_chunk) * _SAMPLE_RATE / self._chunk_sample_rate)
                 resampled_chunk = resample(input_chunk, num_new_samples).astype(np.int16)

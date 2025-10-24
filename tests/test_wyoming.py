@@ -6,24 +6,40 @@ from wyoming.info import Describe, Info
 
 import argparse
 import asyncio
+import math
 import numpy as np
 import time
 import wave
 from wave import Wave_read
+from scipy.signal import resample_poly
 
 DEFAULT_AUDIO_FILE = 'play-recording.wav'
-SAMPLE_RATE = 16000
 
 
 def get_test_data(wav: Wave_read) -> Generator[bytes, None, None]:
-    CHUNK_LENGTH_IN_SECONDS = 1
-    CHUNK_SAMPLES = CHUNK_LENGTH_IN_SECONDS * SAMPLE_RATE
-
     n_frames = wav.getnframes()
     audio_bytes = wav.readframes(n_frames)
     assert wav.getsampwidth() == 2, 'Expected 16-bit audio'
     audio_data_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
     print(f'Loaded {audio_data_int16.size} samples of audio data.')
+
+    if args.target_rate is not None and wav.getframerate() != args.target_rate:
+        print(f'Resample from {wav.getframerate()}Hz to {args.target_rate}Hz ...')
+        # reduce ratio to small integers to speed up/filter design
+        g = math.gcd(args.target_rate, wav.getframerate())
+        up = args.target_rate // g
+        down = wav.getframerate() // g
+
+        # Work in float for filtering; resample_poly accepts ints too but float is explicit
+        audio_float = audio_data_int16.astype(np.float32)
+        audio_resampled = resample_poly(audio_float, up, down)
+
+        audio_resampled = np.clip(audio_resampled, -32768, 32767)
+        audio_data_int16 = np.round(audio_resampled).astype(np.int16)
+        print(f'Resampled to {audio_data_int16.size} samples.')
+
+    CHUNK_LENGTH_IN_SECONDS = 1
+    CHUNK_SAMPLES = CHUNK_LENGTH_IN_SECONDS * args.target_rate
 
     cur_sample = 0
     while cur_sample < audio_data_int16.size:
@@ -43,8 +59,10 @@ async def run():
 
         with wave.open(args.audio_file, "rb") as wav:
             await client.write_event(Transcribe().event())
+            if args.target_rate is None:
+                args.target_rate = wav.getframerate()
             audio_metadata = {
-                'rate': wav.getframerate(),
+                'rate': args.target_rate,
                 'width': wav.getsampwidth(),
                 'channels': wav.getnchannels(),
             }
@@ -69,6 +87,7 @@ parser.add_argument("--ip", required=True)
 parser.add_argument("--port", required=True)
 parser.add_argument("--audio_file", default=DEFAULT_AUDIO_FILE)
 parser.add_argument("--debug", action="store_true")
+parser.add_argument("--target_rate", default=None, type=int)
 args = parser.parse_args()
 
 asyncio.run(run())

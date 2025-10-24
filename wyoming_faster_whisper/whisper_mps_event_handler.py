@@ -80,6 +80,8 @@ class WhisperMpsEventHandler(AsyncEventHandler):
             self._sample_width = None
             self._channels = None
 
+            # TODO: Add debug output here.
+
             async with self.model_lock:
                 text = whisper.transcribe(audio=audio, model=self.cli_args.model)
 

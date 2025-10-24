@@ -5,6 +5,9 @@ import logging
 from typing import Optional
 import mlx.core as mx
 import numpy as np
+import os
+import time
+import wave
 
 from whisper_mps import whisper
 
@@ -41,6 +44,7 @@ class WhisperMpsEventHandler(AsyncEventHandler):
         self._sample_rate: Optional[int] = None
         self._sample_width: Optional[int] = None
         self._channels: Optional[int] = None
+        self._wav_debug_dir = self.cli_args.audio_debug_dir
 
     async def handle_event(self, event: Event) -> bool:
         if AudioChunk.is_type(event.type):
@@ -68,8 +72,8 @@ class WhisperMpsEventHandler(AsyncEventHandler):
             assert self._audio_chunks, "No audio chunks received"
 
             # Concatenate all chunks and normalize to float16 [-1, 1]
-            audio = np.concatenate(self._audio_chunks)
-            audio = audio.astype(np.float16) / 32768.0  # int16 range is [-32768, 32767]
+            audio_int16 = np.concatenate(self._audio_chunks)
+            audio = audio_int16.astype(np.float16) / 32768.0  # int16 range is [-32768, 32767]
 
             # Convert to MLX array with shape (# of samples,)
             audio = mx.array(audio)
@@ -80,7 +84,26 @@ class WhisperMpsEventHandler(AsyncEventHandler):
             self._sample_width = None
             self._channels = None
 
-            # TODO: Add debug output here.
+            if self._wav_debug_dir is not None:
+                try:
+                    # Ensure the debug directory exists
+                    os.makedirs(self._wav_debug_dir, exist_ok=True)
+
+                    # Timestamp suffix with microseconds to avoid collisions
+                    timestamp = time.strftime("%Y%m%d_%H%M%S")
+                    dst_name = f"debug_{timestamp}.wav"
+                    dst_path = os.path.join(self._wav_debug_dir, dst_name)
+
+                    # Write WAV file
+                    with wave.open(dst_path, 'wb') as wav_file:
+                        wav_file.setnchannels(1)
+                        wav_file.setsampwidth(2)
+                        wav_file.setframerate(16000)
+                        wav_file.writeframes(audio_int16.tobytes())
+
+                    _LOGGER.debug("WAV debug copy written to %s", dst_path)
+                except Exception as exc:
+                    _LOGGER.exception("Failed to write WAV debug copy: %s", exc)
 
             async with self.model_lock:
                 text = whisper.transcribe(audio=audio, model=self.cli_args.model)

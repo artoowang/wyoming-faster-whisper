@@ -106,7 +106,7 @@ class WhisperMpsEventHandler(AsyncEventHandler):
                     _LOGGER.exception("Failed to write WAV debug copy: %s", exc)
 
             async with self.model_lock:
-                text = whisper.transcribe(audio=audio, model=self.cli_args.model)
+                text = whisper.transcribe(audio=audio, model=self.cli_args.model, language=self._language)
 
             _LOGGER.info(text)
 

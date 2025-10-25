@@ -107,11 +107,15 @@ class WhisperMpsEventHandler(AsyncEventHandler):
 
             start_time = time.time()
             async with self.model_lock:
-                result = whisper.transcribe(audio=audio, model=self.cli_args.model, language=self._language)
+                result = whisper.transcribe(
+                    audio=audio,
+                    model=self.cli_args.model,
+                    language=self._language,
+                    initial_prompt=self.initial_prompt)
             _LOGGER.debug("Transcription completed in %.2f seconds", time.time() - start_time)
             _LOGGER.debug(f"Result: {result}")
 
-            await self.write_event(Transcript(text=result["text"]).event())
+            await self.write_event(Transcript(text=result["text"], language=result["language"]).event())
             _LOGGER.debug("Completed request")
 
             # Reset

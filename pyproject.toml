@@ -26,7 +26,7 @@ dependencies = [
     "moshi_mlx>=0.3.0",
     "numpy>=2.2.6",
     "scipy>=1.16.2",
-    "whisper-mps==0.0.9",
+    "whisper-mps @ git+https://github.com/artoowang/whisper-mps.git@main",
     "wyoming>=1.5.3"
 ]
 

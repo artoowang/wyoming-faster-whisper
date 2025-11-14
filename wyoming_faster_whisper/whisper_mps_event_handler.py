@@ -84,6 +84,19 @@ class WhisperMpsEventHandler(AsyncEventHandler):
             self._sample_width = None
             self._channels = None
 
+            start_time = time.time()
+            async with self.model_lock:
+                result = whisper.transcribe(
+                    audio=audio,
+                    model=self.cli_args.model,
+                    language=self._language,
+                    initial_prompt=self.initial_prompt)
+            _LOGGER.debug("Transcription completed in %.2f seconds", time.time() - start_time)
+            _LOGGER.debug(f"Result: {result}")
+
+            await self.write_event(Transcript(text=result["text"], language=result["language"]).event())
+            _LOGGER.debug("Completed request")
+
             if self._wav_debug_dir is not None:
                 try:
                     # Ensure the debug directory exists
@@ -104,19 +117,6 @@ class WhisperMpsEventHandler(AsyncEventHandler):
                     _LOGGER.debug("WAV debug copy written to %s", dst_path)
                 except Exception as exc:
                     _LOGGER.exception("Failed to write WAV debug copy: %s", exc)
-
-            start_time = time.time()
-            async with self.model_lock:
-                result = whisper.transcribe(
-                    audio=audio,
-                    model=self.cli_args.model,
-                    language=self._language,
-                    initial_prompt=self.initial_prompt)
-            _LOGGER.debug("Transcription completed in %.2f seconds", time.time() - start_time)
-            _LOGGER.debug(f"Result: {result}")
-
-            await self.write_event(Transcript(text=result["text"], language=result["language"]).event())
-            _LOGGER.debug("Completed request")
 
             # Reset
             self._language = self.cli_args.language

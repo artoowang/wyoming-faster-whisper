@@ -66,13 +66,13 @@ class WhisperMpsEventHandler(AsyncEventHandler):
 
             # Run ffmpeg arnndn filter
             cmd = [
-                "ffmpeg",
+                "/opt/homebrew/bin/ffmpeg",
                 "-y",
                 "-hide_banner",
                 "-i",
                 in_fd.name,
                 "-af",
-                "arnndn=m=/Users/artoowang/Programs/arnndn-models/std.rnnn",
+                "arnndn=m=/Users/ollama/Programs/wyoming-faster-whisper/rnnn/std.rnnn",
                 "-ar",
                 f"{_SAMPLE_RATE}",
                 out_fd.name,

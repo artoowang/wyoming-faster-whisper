@@ -81,6 +81,11 @@ async def main() -> None:
         default=None,
         help="When supplied, dump the resampled audio file to this directory for debugging.",
     )
+    parser.add_argument(
+        "--ffmpeg-denoise",
+        action="store_true",
+        help="Use ffmpeg arnndn filter to denoise audio before transcription.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(

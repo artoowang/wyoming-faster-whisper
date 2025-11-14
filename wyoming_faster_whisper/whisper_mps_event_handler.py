@@ -8,6 +8,8 @@ import numpy as np
 import os
 import time
 import wave
+import subprocess
+import tempfile
 
 from whisper_mps import whisper
 
@@ -18,6 +20,9 @@ from wyoming.info import Describe, Info
 from wyoming.server import AsyncEventHandler
 
 _LOGGER = logging.getLogger(__name__)
+_SAMPLE_RATE = 16000
+_SAMPLE_WIDTH = 2
+_CHANNELS = 1
 
 
 class WhisperMpsEventHandler(AsyncEventHandler):
@@ -41,10 +46,54 @@ class WhisperMpsEventHandler(AsyncEventHandler):
         self._language = self.cli_args.language
         # Store audio chunks and metadata
         self._audio_chunks: list[np.ndarray] = []
-        self._sample_rate: Optional[int] = None
-        self._sample_width: Optional[int] = None
-        self._channels: Optional[int] = None
         self._wav_debug_dir = self.cli_args.audio_debug_dir
+
+    def _ffmpeg_arnndn_denoise(self, audio_int16: np.ndarray) -> np.ndarray:
+        """Run ffmpeg arnndn denoiser on `audio_int16` and return denoised int16 numpy array.
+
+        This writes input to a temporary WAV, calls ffmpeg to apply `arnndn`, reads the
+        output WAV back, and returns the samples as np.int16.
+        """
+        in_fd = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        out_fd = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        try:
+            # Write input WAV
+            with wave.open(in_fd.name, "wb") as wf:
+                wf.setnchannels(_CHANNELS)
+                wf.setsampwidth(_SAMPLE_WIDTH)
+                wf.setframerate(_SAMPLE_RATE)
+                wf.writeframes(audio_int16.tobytes())
+
+            # Run ffmpeg arnndn filter
+            cmd = [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-i",
+                in_fd.name,
+                "-af",
+                "arnndn=m=/Users/artoowang/Programs/arnndn-models/std.rnnn",
+                "-ar",
+                f"{_SAMPLE_RATE}",
+                out_fd.name,
+            ]
+            subprocess.run(cmd, check=True)
+
+            # Read output WAV
+            with wave.open(out_fd.name, "rb") as wf:
+                frames = wf.readframes(wf.getnframes())
+                denoised = np.frombuffer(frames, dtype=np.int16)
+
+            return denoised
+        finally:
+            try:
+                os.unlink(in_fd.name)
+            except Exception:
+                pass
+            try:
+                os.unlink(out_fd.name)
+            except Exception:
+                pass
 
     async def handle_event(self, event: Event) -> bool:
         if AudioChunk.is_type(event.type):
@@ -52,12 +101,9 @@ class WhisperMpsEventHandler(AsyncEventHandler):
 
             # Store metadata from first chunk
             if not self._audio_chunks:
-                assert chunk.rate == 16000, f"Only supports 16kHz audio, but received rate {chunk.rate}"
-                assert chunk.width == 2, f"Only supports 16-bit audio, but received width {chunk.width}"
-                assert chunk.channels == 1, f"Only supports mono audio, but received {chunk.channels} channels"
-                self._sample_rate = chunk.rate
-                self._sample_width = chunk.width
-                self._channels = chunk.channels
+                assert chunk.rate == _SAMPLE_RATE, f"Only supports 16kHz audio, but received rate {chunk.rate}"
+                assert chunk.width == _SAMPLE_WIDTH, f"Only supports 16-bit audio, but received width {chunk.width}"
+                assert chunk.channels == _CHANNELS, f"Only supports mono audio, but received {chunk.channels} channels"
 
             # Convert bytes to int16 numpy array and store
             audio_array = np.frombuffer(chunk.audio, dtype=np.int16)
@@ -71,8 +117,18 @@ class WhisperMpsEventHandler(AsyncEventHandler):
             )
             assert self._audio_chunks, "No audio chunks received"
 
-            # Concatenate all chunks and normalize to float16 [-1, 1]
+            # Concatenate all chunks
             audio_int16 = np.concatenate(self._audio_chunks)
+
+            # Optionally denoise with ffmpeg arnndn if enabled in CLI args
+            if self.cli_args.ffmpeg_denoise:
+                try:
+                    audio_int16 = self._ffmpeg_arnndn_denoise(audio_int16)
+                    _LOGGER.debug("Audio denoised with ffmpeg arnndn")
+                except Exception:
+                    _LOGGER.exception("FFmpeg denoising failed; proceeding with original audio")
+
+            # Normalize to float16 [-1, 1]
             audio = audio_int16.astype(np.float16) / 32768.0  # int16 range is [-32768, 32767]
 
             # Convert to MLX array with shape (# of samples,)
@@ -80,9 +136,6 @@ class WhisperMpsEventHandler(AsyncEventHandler):
 
             # Clear chunks for next request
             self._audio_chunks.clear()
-            self._sample_rate = None
-            self._sample_width = None
-            self._channels = None
 
             start_time = time.time()
             async with self.model_lock:

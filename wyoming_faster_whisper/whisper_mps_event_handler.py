@@ -48,17 +48,28 @@ class WhisperMpsEventHandler(AsyncEventHandler):
         self._audio_chunks: list[np.ndarray] = []
         self._wav_debug_dir = self.cli_args.audio_debug_dir
 
+        if self._wav_debug_dir is not None:
+            # Ensure the debug directory exists
+            os.makedirs(self._wav_debug_dir, exist_ok=True)
+
     def _ffmpeg_arnndn_denoise(self, audio_int16: np.ndarray) -> np.ndarray:
         """Run ffmpeg arnndn denoiser on `audio_int16` and return denoised int16 numpy array.
 
         This writes input to a temporary WAV, calls ffmpeg to apply `arnndn`, reads the
         output WAV back, and returns the samples as np.int16.
         """
-        in_fd = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-        out_fd = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        if self._wav_debug_dir is not None:
+            # Timestamp suffix with microseconds to avoid collisions
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            in_name = os.path.join(self._wav_debug_dir, f"debug_{timestamp}.wav")
+            out_name = os.path.join(self._wav_debug_dir, f"debug_denoised_{timestamp}.wav")
+        else:
+            in_name = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+            out_name = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
+
         try:
             # Write input WAV
-            with wave.open(in_fd.name, "wb") as wf:
+            with wave.open(in_name, "wb") as wf:
                 wf.setnchannels(_CHANNELS)
                 wf.setsampwidth(_SAMPLE_WIDTH)
                 wf.setframerate(_SAMPLE_RATE)
@@ -70,30 +81,31 @@ class WhisperMpsEventHandler(AsyncEventHandler):
                 "-y",
                 "-hide_banner",
                 "-i",
-                in_fd.name,
+                in_name,
                 "-af",
                 "arnndn=m=/Users/ollama/Programs/wyoming-faster-whisper/rnnn/std.rnnn",
                 "-ar",
                 f"{_SAMPLE_RATE}",
-                out_fd.name,
+                out_name,
             ]
             subprocess.run(cmd, check=True)
 
             # Read output WAV
-            with wave.open(out_fd.name, "rb") as wf:
+            with wave.open(out_name, "rb") as wf:
                 frames = wf.readframes(wf.getnframes())
                 denoised = np.frombuffer(frames, dtype=np.int16)
 
             return denoised
         finally:
-            try:
-                os.unlink(in_fd.name)
-            except Exception:
-                pass
-            try:
-                os.unlink(out_fd.name)
-            except Exception:
-                pass
+            if self._wav_debug_dir is None:
+                try:
+                    os.unlink(in_name)
+                except Exception:
+                    pass
+                try:
+                    os.unlink(out_name)
+                except Exception:
+                    pass
 
     async def handle_event(self, event: Event) -> bool:
         if AudioChunk.is_type(event.type):
@@ -127,6 +139,23 @@ class WhisperMpsEventHandler(AsyncEventHandler):
                     _LOGGER.debug("Audio denoised with ffmpeg arnndn")
                 except Exception:
                     _LOGGER.exception("FFmpeg denoising failed; proceeding with original audio")
+            else:
+                if self._wav_debug_dir is not None:
+                    try:
+                        # Timestamp suffix with microseconds to avoid collisions
+                        timestamp = time.strftime("%Y%m%d_%H%M%S")
+                        dst_path = os.path.join(self._wav_debug_dir, f"debug_{timestamp}.wav")
+
+                        # Write WAV file
+                        with wave.open(dst_path, 'wb') as wav_file:
+                            wav_file.setnchannels(_CHANNELS)
+                            wav_file.setsampwidth(_SAMPLE_WIDTH)
+                            wav_file.setframerate(_SAMPLE_RATE)
+                            wav_file.writeframes(audio_int16.tobytes())
+
+                        _LOGGER.debug("WAV debug copy written to %s", dst_path)
+                    except Exception as exc:
+                        _LOGGER.exception("Failed to write WAV debug copy: %s", exc)
 
             # Normalize to float16 [-1, 1]
             audio = audio_int16.astype(np.float16) / 32768.0  # int16 range is [-32768, 32767]
@@ -149,27 +178,6 @@ class WhisperMpsEventHandler(AsyncEventHandler):
 
             await self.write_event(Transcript(text=result["text"], language=result["language"]).event())
             _LOGGER.debug("Completed request")
-
-            if self._wav_debug_dir is not None:
-                try:
-                    # Ensure the debug directory exists
-                    os.makedirs(self._wav_debug_dir, exist_ok=True)
-
-                    # Timestamp suffix with microseconds to avoid collisions
-                    timestamp = time.strftime("%Y%m%d_%H%M%S")
-                    dst_name = f"debug_{timestamp}.wav"
-                    dst_path = os.path.join(self._wav_debug_dir, dst_name)
-
-                    # Write WAV file
-                    with wave.open(dst_path, 'wb') as wav_file:
-                        wav_file.setnchannels(1)
-                        wav_file.setsampwidth(2)
-                        wav_file.setframerate(16000)
-                        wav_file.writeframes(audio_int16.tobytes())
-
-                    _LOGGER.debug("WAV debug copy written to %s", dst_path)
-                except Exception as exc:
-                    _LOGGER.exception("Failed to write WAV debug copy: %s", exc)
 
             # Reset
             self._language = self.cli_args.language

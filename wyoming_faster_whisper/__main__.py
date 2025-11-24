@@ -86,6 +86,12 @@ async def main() -> None:
         action="store_true",
         help="Use ffmpeg arnndn filter to denoise audio before transcription.",
     )
+    parser.add_argument(
+        "--ffmpeg-arnndn-model-path",
+        default=None,
+        help=("Path to .rnnn model file for ffmpeg arnndn denoising. " +
+              "Required if --ffmpeg-denoise is set."),
+    )
     args = parser.parse_args()
 
     logging.basicConfig(

@@ -83,7 +83,7 @@ class WhisperMpsEventHandler(AsyncEventHandler):
                 "-i",
                 in_name,
                 "-af",
-                "arnndn=m=/Users/ollama/Programs/wyoming-faster-whisper/rnnn/std.rnnn",
+                f"arnndn=m={self.cli_args.ffmpeg_arnndn_model_path}",
                 "-ar",
                 f"{_SAMPLE_RATE}",
                 out_name,

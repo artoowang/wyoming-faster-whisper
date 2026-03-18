@@ -1,0 +1,55 @@
+{
+    "$schema": "https://opencode.ai/config.json",
+    "permission": {
+        // By default, all permissions are set to "ask".
+        "*": "ask",
+
+        // -------------------------------------------------------------------------
+        // Allowed permissions.
+
+        "glob": "allow",
+        "grep": "allow",
+        "list": "allow",
+        "read": "allow",
+        "todowrite": "allow",
+        "webfetch": "allow",
+        "websearch": "allow",
+
+        // -------------------------------------------------------------------------
+        // Skills.
+
+        "skill": {
+            "*": "ask",
+        },
+
+        // -------------------------------------------------------------------------
+        // Allowed external directories.
+
+        "external_directory": {
+            "/tmp/**": "allow",
+        },
+
+        // -------------------------------------------------------------------------
+        // Granular controls.
+
+        "edit": {
+            "*": "ask",
+        },
+        "bash": {
+            "*": "ask",
+            "ls *": "allow",
+            "cat *": "allow",
+            "echo *": "allow",
+            "fold *": "allow",
+            "git log *": "allow",
+            "git ls-tree *": "allow",
+            "git show *": "allow",
+            "grep *": "allow",
+            "head *": "allow",
+            "sed *": "allow",
+            "tail *": "allow",
+            "tr *": "allow",
+            "xargs *": "allow",
+        },
+    }
+}

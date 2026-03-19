@@ -38,6 +38,7 @@
         "bash": {
             "*": "ask",
             "ls *": "allow",
+            "black *": "allow",
             "cat *": "allow",
             "echo *": "allow",
             "fold *": "allow",
@@ -46,7 +47,10 @@
             "git show *": "allow",
             "grep *": "allow",
             "head *": "allow",
+            "isort *": "allow",
+            "python -m py_compile *.py": "allow",
             "sed *": "allow",
+            "source .venv/bin/activate": "allow",
             "tail *": "allow",
             "tr *": "allow",
             "xargs *": "allow",

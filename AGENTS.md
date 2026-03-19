@@ -17,8 +17,14 @@ Wyoming protocol server for speech-to-text using multiple backends:
 ## Commands
 
 ```bash
-# Run locally
-script/run --model tiny-int8 --language en --uri 'tcp://0.0.0.0:10300'
+# Run locally (whisper-mps, avoid port 10300 since that is used by the system daemon)
+script/run --model large --model-type whisper-mps --language en --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt "The following is a transcription of a user command issued to a home assistant. Common command includes 'What time is it', 'Timer, XX minutes', 'Turn on Morning Scene', 'Turn off Mos Eisley'. Common device names include 'Mos Eisley', 'Morning Scene', 'Evening Scene', 'Night Scene'"
+
+# Test a running server at port 10301
+python tests/test_wyoming.py --ip localhost --port 10301 --audio_file <audio_file>
+
+# Example audio files:
+# ~ollama/log/wyoming-stt-audio-debug/debug_20260315_193428.wav
 
 # Type checking
 mypy wyoming_faster_whisper/

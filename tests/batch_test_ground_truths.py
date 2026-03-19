@@ -54,7 +54,7 @@ def parse_ground_truths(md_path: Path) -> list[GroundTruthEntry]:
             continue
         if in_table and line.startswith("|"):
             parts = [p.strip() for p in line.split("|")]
-            if len(parts) >= 3 and parts[1]:
+            if len(parts) >= 3 and parts[1] and not all(c in "-| " for c in line):
                 filename = parts[1]
                 ground_truth = parts[2]
 
@@ -190,6 +190,7 @@ async def test_single_file(
             await client.write_event(AudioStop().event())
 
             result = await client.read_event()
+            assert result is not None
             assert Transcript.is_type(result.type)
             transcript = Transcript.from_event(result)
             execution_time = asyncio.get_event_loop().time() - start_time
@@ -206,6 +207,7 @@ async def run_batch_tests(args: argparse.Namespace) -> list[TestResult]:
     async with AsyncTcpClient(args.ip, int(args.port)) as client:
         await client.write_event(Describe().event())
         result = await client.read_event()
+        assert result is not None
         assert Info.is_type(result.type)
         _info = Info.from_event(result)
 

@@ -34,7 +34,7 @@ async def main() -> None:
     parser.add_argument(
         "--device",
         default="cpu",
-        help="Device to use for inference (default: cpu)",
+        help="Device to use for inference (default: cpu). Only used for faster-whisper backend.",
     )
     parser.add_argument(
         "--language",

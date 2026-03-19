@@ -20,6 +20,9 @@ Use `initial_prompt.md` for the default initial prompt, unless the user
 specifies something else.
 
 ```bash
+# Enter the virtual environment.
+source .venv/bin/activate
+
 # Run locally (whisper-mps, avoid port 10300 since that is used by the system daemon)
 script/run --model large --model-type whisper-mps --language en --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <initial_prompt>
 

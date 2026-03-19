@@ -13,7 +13,7 @@ from wyoming.info import AsrModel, AsrProgram, Attribution, Info
 from wyoming.server import AsyncServer
 
 from . import __version__
-from .handler import FasterWhisperEventHandler
+from .faster_whisper_event_handler import FasterWhisperEventHandler
 
 _LOGGER = logging.getLogger(__name__)
 

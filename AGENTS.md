@@ -45,7 +45,7 @@ flake8 wyoming_faster_whisper/
 
 ### Event Handlers
 Each model type has its own handler in `wyoming_faster_whisper/`:
-- `handler.py` - FasterWhisperEventHandler (faster-whisper backend)
+- `faster_whisper_event_handler.py` - FasterWhisperEventHandler (faster-whisper backend)
 - `kyutai_stt_handler.py` - KyutaiSttEventHandler + KyutaiSttModel
 - `whisper_mps_event_handler.py` - WhisperMpsEventHandler
 - `transformers_whisper.py` - TransformersWhisperEventHandler + TransformersWhisperModel

@@ -22,5 +22,3 @@ data/
 # pyenv local
 .python-version
 
-# Test results
-tests/results

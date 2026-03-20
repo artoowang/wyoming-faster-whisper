@@ -41,9 +41,22 @@ See `tests/ground_truths.md` for the list of audio files and their expected tran
 
 Audio files are located at: `/Users/ollama/log/wyoming-stt-audio-debug/`
 
+## Pass/Fail Criteria
+
+A transcription is considered a **PASS** if:
+- Only minor punctuation differences (case, periods, question marks)
+- Acceptable numeric conversion (e.g., "one" → "1")
+- Empty audio (marked `<empty>` in ground truth) produces hallucination
+
+A transcription is considered a **FAIL** if:
+- Semantic errors: words changed to different meaning
+- Opposite meaning: "on" → "off" or similar
+- Hallucination on non-empty audio (e.g., "and so on")
+- Empty transcription on non-empty audio
+- Completely wrong transcription
+
 ## Testing Tips
 
 - Use `--debug` flag on server for verbose logging
 - Test one backend at a time for fair comparison
-- Note: Some entries like `<empty>` or entries with `<noise>` are expected to produce no/poor transcription
 - Use `--target_rate` if the audio file sample rate differs from what the server expects

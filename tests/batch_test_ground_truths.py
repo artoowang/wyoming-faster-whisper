@@ -2,8 +2,6 @@
 import argparse
 import asyncio
 import csv
-import difflib
-import math
 import re
 import wave
 from dataclasses import dataclass
@@ -12,11 +10,12 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from scipy.signal import resample_poly
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncTcpClient
 from wyoming.info import Describe, Info
+
+from audio_utils import get_audio_chunks
 
 AUDIO_DIR = Path("/Users/ollama/log/wyoming-stt-audio-debug/")
 
@@ -149,24 +148,8 @@ async def test_single_file(
         with wave.open(str(audio_path), "rb") as wav:
             await client.write_event(Transcribe().event())
 
-            wav_rate = wav.getframerate()
             wav_width = wav.getsampwidth()
             wav_channels = wav.getnchannels()
-
-            if wav_rate != target_rate:
-                n_frames = wav.getnframes()
-                audio_bytes = wav.readframes(n_frames)
-                audio_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
-                g = math.gcd(target_rate, wav_rate)
-                up, down = target_rate // g, wav_rate // g
-                audio_float = audio_int16.astype(np.float32)
-                audio_resampled = resample_poly(audio_float, up, down)
-                audio_resampled = np.clip(audio_resampled, -32768, 32767)
-                audio_int16 = np.round(audio_resampled).astype(np.int16)
-            else:
-                n_frames = wav.getnframes()
-                audio_bytes = wav.readframes(n_frames)
-                audio_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
 
             audio_metadata = {
                 "rate": target_rate,
@@ -175,14 +158,7 @@ async def test_single_file(
             }
             await client.write_event(AudioStart(**audio_metadata).event())
 
-            CHUNK_LENGTH_IN_SECONDS = 1
-            CHUNK_SAMPLES = CHUNK_LENGTH_IN_SECONDS * target_rate
-            cur_sample = 0
-
-            while cur_sample < audio_int16.size:
-                end_sample = min(cur_sample + CHUNK_SAMPLES, audio_int16.size)
-                audio_data = audio_int16[cur_sample:end_sample].tobytes()
-                cur_sample = end_sample
+            for audio_data in get_audio_chunks(wav, target_rate):
                 await client.write_event(
                     AudioChunk(**audio_metadata, audio=audio_data).event()
                 )

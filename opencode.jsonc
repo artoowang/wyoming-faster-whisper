@@ -35,6 +35,7 @@
 
         "edit": {
             "*": "ask",
+            "tests/**": "allow",
         },
         "bash": {
             "*": "ask",

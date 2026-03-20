@@ -2,20 +2,17 @@
 import argparse
 import asyncio
 import csv
-import re
 import wave
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
-import numpy as np
 from wyoming.asr import Transcribe, Transcript
 from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncTcpClient
 from wyoming.info import Describe, Info
 
-from audio_utils import get_audio_chunks
+from tests.audio_utils import get_audio_chunks
 
 AUDIO_DIR = Path("/Users/ollama/log/wyoming-stt-audio-debug/")
 
@@ -302,9 +299,9 @@ def print_summary(results: list[TestResult]) -> None:
     print(f"Total Execution Time: {total_time:.2f}s (avg: {avg_time:.2f}s per file)")
 
     print(f"\n--- Clear Commands ({len(clear_results)}) ---")
-    print(f"Exact Match: {clear_exact} ({clear_exact/len(clear_results)*100:.1f}%)")
+    print(f"Exact Match: {clear_exact} ({clear_exact / len(clear_results) * 100:.1f}%)")
     print(
-        f"Acceptable (WER<10%): {clear_acceptable} ({clear_acceptable/len(clear_results)*100:.1f}%)"
+        f"Acceptable (WER<10%): {clear_acceptable} ({clear_acceptable / len(clear_results) * 100:.1f}%)"
     )
     print(f"Failed: {len(clear_results) - clear_acceptable}")
 

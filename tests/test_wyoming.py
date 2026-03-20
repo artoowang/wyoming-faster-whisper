@@ -8,7 +8,7 @@ from wyoming.audio import AudioChunk, AudioStart, AudioStop
 from wyoming.client import AsyncTcpClient
 from wyoming.info import Describe, Info
 
-from audio_utils import get_audio_chunks
+from tests.audio_utils import get_audio_chunks
 
 DEFAULT_AUDIO_FILE = "play-recording.wav"
 

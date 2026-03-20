@@ -27,7 +27,7 @@ source .venv/bin/activate
 script/run --model large --model-type whisper-mps --language en --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <initial_prompt>
 
 # Test a running server at port 10301
-python tests/test_wyoming.py --ip localhost --port 10301 --audio_file <audio_file>
+python -m tests.test_wyoming --ip localhost --port 10301 --audio_file <audio_file>
 
 # Example audio files:
 # ~ollama/log/wyoming-stt-audio-debug/debug_20260315_193428.wav

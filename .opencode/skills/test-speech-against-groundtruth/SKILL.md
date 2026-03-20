@@ -26,7 +26,13 @@ Backends that can be used to test:
 ## Test a Single Audio File
 
 ```bash
-python tests/test_wyoming.py --ip localhost --port 10301 --audio_file <path_to_wav>
+python -m tests.test_wyoming --ip localhost --port 10301 --audio_file <path_to_wav>
+```
+
+## Batch Test Against Ground Truths
+
+```bash
+python -m tests.batch_test_ground_truth --ip localhost --port 10301
 ```
 
 ## Ground Truths

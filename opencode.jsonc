@@ -39,7 +39,6 @@
         },
         "bash": {
             "*": "ask",
-            "ls *": "allow",
             "black *": "allow",
             "cat *": "allow",
             "echo *": "allow",
@@ -50,6 +49,8 @@
             "grep *": "allow",
             "head *": "allow",
             "isort *": "allow",
+            "ls *": "allow",
+            "lsof *": "allow",
             "python -m py_compile *.py": "allow",
             "python -m tests.*": "allow",
             "sed *": "allow",

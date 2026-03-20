@@ -2,17 +2,15 @@
 import argparse
 import asyncio
 import csv
-import wave
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from wyoming.asr import Transcribe, Transcript
-from wyoming.audio import AudioChunk, AudioStart, AudioStop
+from wyoming.asr import Transcript
 from wyoming.client import AsyncTcpClient
 from wyoming.info import Describe, Info
 
-from tests.audio_utils import get_audio_chunks
+from tests.audio_utils import send_audio_stream
 
 AUDIO_DIR = Path("/Users/ollama/log/wyoming-stt-audio-debug/")
 
@@ -133,44 +131,6 @@ def check_transcription_quality(
     return is_pass, wer
 
 
-async def test_single_file(
-    ip: str,
-    port: int,
-    target_rate: int,
-    audio_path: Path,
-) -> tuple[str, float]:
-    start_time = asyncio.get_event_loop().time()
-
-    async with AsyncTcpClient(ip, port) as client:
-        with wave.open(str(audio_path), "rb") as wav:
-            await client.write_event(Transcribe().event())
-
-            wav_width = wav.getsampwidth()
-            wav_channels = wav.getnchannels()
-
-            audio_metadata = {
-                "rate": target_rate,
-                "width": wav_width,
-                "channels": wav_channels,
-            }
-            await client.write_event(AudioStart(**audio_metadata).event())
-
-            for audio_data in get_audio_chunks(wav, target_rate):
-                await client.write_event(
-                    AudioChunk(**audio_metadata, audio=audio_data).event()
-                )
-
-            await client.write_event(AudioStop().event())
-
-            result = await client.read_event()
-            assert result is not None
-            assert Transcript.is_type(result.type)
-            transcript = Transcript.from_event(result)
-            execution_time = asyncio.get_event_loop().time() - start_time
-
-            return transcript.text, execution_time
-
-
 async def run_batch_tests(args: argparse.Namespace) -> list[TestResult]:
     entries = parse_ground_truths(Path("tests/ground_truths.md"))
 
@@ -203,9 +163,10 @@ async def run_batch_tests(args: argparse.Namespace) -> list[TestResult]:
             continue
 
         try:
-            transcription, exec_time = await test_single_file(
-                args.ip, int(args.port), target_rate, audio_path
-            )
+            async with AsyncTcpClient(args.ip, int(args.port)) as client:
+                transcription, exec_time = await send_audio_stream(
+                    client, audio_path, target_rate
+                )
             is_pass, wer = check_transcription_quality(
                 transcription, entry.category, entry.ground_truth
             )

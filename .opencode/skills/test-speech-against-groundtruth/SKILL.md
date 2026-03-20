@@ -32,7 +32,7 @@ python -m tests.test_wyoming --ip localhost --port 10301 --audio_file <path_to_w
 ## Batch Test Against Ground Truths
 
 ```bash
-python -m tests.batch_test_ground_truth --ip localhost --port 10301
+python -m tests.batch_test_ground_truths --ip localhost --port 10301
 ```
 
 ## Ground Truths

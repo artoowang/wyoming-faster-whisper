@@ -57,6 +57,4 @@ A transcription is considered a **FAIL** if:
 
 ## Testing Tips
 
-- Use `--debug` flag on server for verbose logging
 - Test one backend at a time for fair comparison
-- Use `--target_rate` if the audio file sample rate differs from what the server expects

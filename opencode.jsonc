@@ -54,6 +54,7 @@
             "ls *": "allow",
             "lsof *": "allow",
             "mypy *": "allow",
+            "nc *": "allow",
             "python -m py_compile *.py": "allow",
             "python -m tests.*": "allow",
             "sed *": "allow",

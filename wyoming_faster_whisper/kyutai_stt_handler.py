@@ -45,8 +45,8 @@ class KyutaiSttModel:
         moshi_weights = hf_hub_download(hf_repo, moshi_name)
         text_tokenizer = hf_hub_download(hf_repo, lm_config["tokenizer_name"])
 
-        lm_config = models.LmConfig.from_config_dict(lm_config)
-        model = models.Lm(lm_config)
+        lm_config_obj = models.LmConfig.from_config_dict(lm_config)
+        model = models.Lm(lm_config_obj)
         model.set_dtype(mx.bfloat16)
         if moshi_weights.endswith(".q4.safetensors"):
             nn.quantize(model, bits=4, group_size=32)
@@ -55,7 +55,7 @@ class KyutaiSttModel:
 
         _LOGGER.info(f"loading model weights from {moshi_weights}")
         if hf_repo.endswith("-candle"):
-            model.load_pytorch_weights(moshi_weights, lm_config, strict=True)
+            model.load_pytorch_weights(moshi_weights, lm_config_obj, strict=True)
         else:
             model.load_weights(moshi_weights, strict=True)
 
@@ -76,8 +76,8 @@ class KyutaiSttModel:
         # else:
         #     ct = None
 
-        self._model = model
-        self._audio_tokenizer = audio_tokenizer
+        self._model: models.Lm = model
+        self._audio_tokenizer: models.mimi.Mimi = audio_tokenizer
         self._text_tokenizer = text_tokenizer
 
         self.reset()

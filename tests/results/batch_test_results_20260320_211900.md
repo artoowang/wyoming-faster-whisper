@@ -60,19 +60,19 @@ transcription result.
 | 25 | debug_20251112_225552.wav | Turn on night scene \<low volume\> | Turn on night scene. | Yes | PASS |
 | 26 | debug_20251024_195256.wav | Timer, 15 minutes | Time for fifteen minutes. | No | FAIL |
 | 27 | debug_20251024_181834.wav | How about now? | How about now? | Yes | PASS |
-| 28 | debug_20251026_143348.wav | \<empty with initial chime\> | Good morning. | No | FAIL |
+| 28 | debug_20251026_143348.wav | <empty with initial chime> | Good morning. | No | FAIL - Hallucination on empty audio |
 | 29 | debug_20251105_074155.wav | Turn on morning scene | Turn on morning scene. | Yes | PASS |
 | 30 | debug_20251112_225605.wav | Turn on night scene | Turn on the night scene. | Yes | PASS |
 | 31 | debug_20251115_213955.wav | Turn off Mos Eisley | Turn off, Mos Eisley. | Yes | PASS |
-| 32 | debug_denoised_20251115_213955.wav | Turn off Mos Eisley | You are a home assistant. Transcribe... | No | FAIL |
+| 32 | debug_denoised_20251115_213955.wav | Turn off Mos Eisley | You are a home assistant. Transcribe... | No | FAIL - Hallucination on empty audio |
 | 33 | debug_20251123_203425.wav | Cancel timer | Cancel timer. | Yes | PASS |
 | 34 | debug_20251123_205211.wav | Cancel timer | Cancel timer. | Yes | PASS |
-| 35 | debug_20251026_143348_trimmed.wav | \<empty\> | Good morning. | No | FAIL |
-| 36 | debug_20251108_075833.wav | Turn it on | Turn it off. | No | FAIL |
+| 35 | debug_20251026_143348_trimmed.wav | <empty> | Good morning. | No | FAIL - Hallucination on empty audio |
+| 36 | debug_20251108_075833.wav | Turn it on | Turn it off. | No | FAIL - Opposite meaning |
 | 37 | debug_20251128_134301.wav | Cancel timer | Cancel timer. | Yes | PASS |
 
 ## Summary
 
 - Total: 37 tests
-- PASS: 27 (73%)
-- FAIL: 10 (27%)
+- PASS: 26 (70%)
+- FAIL: 11 (30%)

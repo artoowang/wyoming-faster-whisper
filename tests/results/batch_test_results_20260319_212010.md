@@ -9,7 +9,7 @@
 - **Total tests**: 37
 - **Server**: localhost:10301
 - **Backend**: whisper-mps
-- **Pass**: 24 | **Fail**: 13
+- **Pass**: 23 | **Fail**: 14
 
 ## Results
 
@@ -49,6 +49,6 @@
 | 32 | debug_denoised_20251115_213955.wav | Turn off Mos Eisley | and so on. | 0.33 | FAIL | Hallucination: "and so on" is wrong |
 | 33 | debug_20251123_203425.wav | Cancel timer | and so on. | 0.33 | FAIL | Hallucination: "and so on" is wrong |
 | 34 | debug_20251123_205211.wav | Cancel timer | and also, Cancel Timer. | 0.37 | FAIL | Hallucination prefix |
-| 35 | debug_20251026_143348_trimmed.wav | <empty> | Common device names include the following. | 0.36 | PASS | Expected hallucination on empty audio |
+| 35 | debug_20251026_143348_trimmed.wav | <empty> | Common device names include the following. | 0.36 | FAIL | Hallucination on empty audio |
 | 36 | debug_20251108_075833.wav | Turn it on | and so on. | 0.34 | FAIL | Hallucination: "and so on" is wrong |
 | 37 | debug_20251128_134301.wav | Cancel timer | Cancel that one. | 0.35 | FAIL | "timer" → "that one" - semantic error |

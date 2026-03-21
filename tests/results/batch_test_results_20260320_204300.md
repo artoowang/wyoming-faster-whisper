@@ -59,18 +59,18 @@ include: turn on, turn off, open, close.`
 | 25 | debug_20251112_225552.wav | Turn on night scene <low volume> | Turn on night scene. | Yes | PASS |
 | 26 | debug_20251024_195256.wav | Timer, 15 minutes | Time for fifteen minutes. | No | FAIL - Semantic error |
 | 27 | debug_20251024_181834.wav | How about now? | How about now? | Yes | PASS |
-| 28 | debug_20251026_143348.wav | <empty with initial chime> | Turn on the lights. | Yes | PASS (hallucination on empty) |
+| 28 | debug_20251026_143348.wav | <empty with initial chime> | Turn on the lights. | No | FAIL - Hallucination on empty audio |
 | 29 | debug_20251105_074155.wav | Turn on morning scene | Turn on morning scene. | Yes | PASS |
 | 30 | debug_20251112_225605.wav | Turn on night scene | Turn on the night scene. | Yes | PASS |
 | 31 | debug_20251115_213955.wav | Turn off Mos Eisley | Turn off most iCarly. | No | FAIL - Wrong words |
 | 32 | debug_denoised_20251115_213955.wav | Turn off Mos Eisley | Turn on, most expensive. | No | FAIL - Opposite meaning |
 | 33 | debug_20251123_203425.wav | Cancel timer | Turn on the morning scene. | No | FAIL - Completely wrong |
 | 34 | debug_20251123_205211.wav | Cancel timer | Cancel timer. | Yes | PASS |
-| 35 | debug_20251026_143348_trimmed.wav | <empty> | Turn on the lights. | Yes | PASS (hallucination on empty) |
+| 35 | debug_20251026_143348_trimmed.wav | <empty> | Turn on the lights. | No | FAIL - Hallucination on empty audio |
 | 36 | debug_20251108_075833.wav | Turn it on | Turn it on. | Yes | PASS |
 | 37 | debug_20251128_134301.wav | Cancel timer | Turn on the lights. | No | FAIL - Completely wrong |
 
-**Summary**: 28 PASS, 9 FAIL out of 37 tests
+**Summary**: 26 PASS, 11 FAIL out of 37 tests
 
 ## Notes
 

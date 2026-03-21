@@ -36,6 +36,7 @@
         "edit": {
             "*": "ask",
             "tests/**": "allow",
+            "wyoming_faster_whisper/**": "allow",
         },
         "bash": {
             "*": "ask",
@@ -51,6 +52,7 @@
             "isort *": "allow",
             "ls *": "allow",
             "lsof *": "allow",
+            "mypy *": "allow",
             "python -m py_compile *.py": "allow",
             "python -m tests.*": "allow",
             "sed *": "allow",

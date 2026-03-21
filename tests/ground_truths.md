@@ -25,11 +25,11 @@ Audio file location:
 | speech_20251019_191140.wav | Timer, one minute | |
 | speech_20251019_183218.wav | Set timer, one minute | |
 | speech_20251020_091445.wav | What time is it? It's 9:14am | |
-| speech_20251019_192430.wav | Timer, one minute | |
+| speech_20251019_192430.wav | Timer, one minute | With the initial chime |
 | debug_20251024_194442.wav | What time is it? | |
 | debug_20251025_115718.wav | What time is it? | |
 | debug_20251025_201119.wav | What time is it? | |
-| debug_20251109_185336.wav | Turn off Mos Eisley | |
+| debug_20251109_185336.wav | Turn off Mos Eisley | With the initial chime |
 | debug_20251028_225310.wav | Turn on night scene | noise |
 | debug_20251027_073026.wav | Turn on morning scene | low volume |
 | debug_20251112_225552.wav | Turn on night scene | low volume |
@@ -39,9 +39,9 @@ Audio file location:
 | debug_20251105_074155.wav | Turn on morning scene | |
 | debug_20251112_225605.wav | Turn on night scene | |
 | debug_20251115_213955.wav | Turn off Mos Eisley | |
-| debug_denoised_20251115_213955.wav | Turn off Mos Eisley | |
+| debug_denoised_20251115_213955.wav | Turn off Mos Eisley | Heavily denoised |
 | debug_20251123_203425.wav | Cancel timer | |
 | debug_20251123_205211.wav | Cancel timer | |
 | debug_20251026_143348_trimmed.wav | | empty |
 | debug_20251108_075833.wav | Turn it on | |
-| debug_20251128_134301.wav | Cancel timer | |
+| debug_20251128_134301.wav | Cancel timer | With water noise |

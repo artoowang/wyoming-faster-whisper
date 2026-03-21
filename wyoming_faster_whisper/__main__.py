@@ -89,7 +89,7 @@ async def main() -> None:
     parser.add_argument(
         "--model-type",
         default="kyutai-stt",
-        help="Model type: kyutai-stt (default), faster-whisper, or transformer",
+        help="Model type: kyutai-stt (default), faster-whisper, transformer, whisper-mps, or glm-asr",
     )
     parser.add_argument(
         "--local-files-only",
@@ -326,6 +326,53 @@ async def main() -> None:
                 WhisperMpsEventHandler,
                 wyoming_info,
                 args,
+                model_lock,
+                initial_prompt=args.initial_prompt,
+            )
+        )
+    elif args.model_type == "glm-asr":
+        from .glm_asr_event_handler import GlmAsrEventHandler, GlmAsrModel
+
+        _LOGGER.debug("Loading %s", args.model)
+        glm_model = GlmAsrModel(
+            args.model,
+            cache_dir=args.download_dir,
+            local_files_only=args.local_files_only,
+        )
+        wyoming_info = Info(
+            asr=[
+                AsrProgram(
+                    name="glm-asr",
+                    description="GLM-ASR speech recognition model",
+                    attribution=Attribution(
+                        name="THUDM",
+                        url="https://github.com/THUDM/GLM-ASR",
+                    ),
+                    installed=True,
+                    version=__version__,
+                    models=[
+                        AsrModel(
+                            name=args.model,
+                            description=args.model,
+                            attribution=Attribution(
+                                name="THUDM",
+                                url="https://huggingface.co/zai-org",
+                            ),
+                            installed=True,
+                            languages=[],
+                            version="",
+                        )
+                    ],
+                )
+            ],
+        )
+        _LOGGER.info("Ready")
+
+        await server.run(
+            partial(
+                GlmAsrEventHandler,
+                wyoming_info,
+                glm_model,
                 model_lock,
                 initial_prompt=args.initial_prompt,
             )

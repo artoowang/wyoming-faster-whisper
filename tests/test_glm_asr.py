@@ -5,6 +5,15 @@ from transformers import AutoModel, AutoProcessor
 
 parser = argparse.ArgumentParser()
 parser.add_argument("audio_file", help="Path to the audio file")
+parser.add_argument(
+    "--prompt",
+    default=(
+        "You are a home assistant. Transcribe the user audio into commands. "
+        "Common device names include: morning scene, evening scene, night scene. "
+        "Common commands include: turn on, turn off, open, close."
+    ),
+    help="Prompt to guide transcription",
+)
 args = parser.parse_args()
 
 # The following code is adapted from
@@ -28,11 +37,7 @@ messages = [
             },
             {
                 "type": "text",
-                "text": (
-                    "You are a home assistant. Transcribe the user audio into commands. "
-                    "Common device names include: morning scene, evening scene, night scene."
-                    "Common commands include: turn on, turn off, open, close."
-                ),
+                "text": args.prompt,
             },
         ],
     }

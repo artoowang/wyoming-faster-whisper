@@ -5,17 +5,22 @@
 ### 1. Create `wyoming_faster_whisper/glm_asr_event_handler.py`
 - New `GlmAsrEventHandler` class (similar to existing handlers)
 - Audio handling: 16kHz mono expected, accumulate chunks
-- On `AudioStop`: transcribe using GLM-ASR
+- On `AudioStop`: transcribe using GLM-ASR. No streaming support needed for now.
 - Language handling (GLM-ASR uses chat template, so prompt goes in messages)
 
 ### 2. Modify `wyoming_faster_whisper/__main__.py`
 - Add `--model-type glm-asr` option
 - Add `glm-asr` case that loads model and runs `GlmAsrEventHandler`
-- `--model` will be the HuggingFace repo_id (default: `zai-org/GLM-ASR-Nano-2512`)
-- `--initial-prompt` can be passed as system message
 
-### 3. Modify `tests/test_glm_asr.py` or create integration test
-- Follow pattern from `test_faster_whisper.py`
+### 3. Test with script/run
+
+```shell
+script/run --model-type glm-asr --model "zai-org/GLM-ASR-Nano-2512" --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <prompt>
+```
+
+The prompt to use is the following:
+
+`The following is a transcription of a user command issued to a home assistant. Common command includes 'What time is it', 'Timer, XX minutes', 'Turn on Morning Scene', 'Turn off Mos Eisley'. Common device names include 'Mos Eisley', 'Morning Scene', 'Evening Scene', 'Night Scene'`
 
 ## GLM-ASR Specific Considerations
 
@@ -27,12 +32,6 @@
 | Transcription | Chat template with audio URL + system prompt |
 | Device | Automatic (from `model.device`) |
 | Initial prompt | Pass via chat template system message |
-
-## Implementation Questions
-
-1. Should `--initial-prompt` be the system message text, or do you want a separate `--glm-system-prompt` flag?
-2. Should we support streaming (return partial results) or only final transcript?
-3. Will GLM-ASR run on CPU/GPU or always use the automatic device mapping?
 
 ## Detailed Handler Structure
 
@@ -98,6 +97,18 @@ class GlmAsrModel:
 
 1. **Audio format**: GLM-ASR expects an audio URL/path in the chat template. Do we need to convert WAV to a different format, or can we pass the temp file path directly?
 
-2. **System prompt**: Should `--initial-prompt` become the system text, or do you want a separate `--glm-system-prompt`?
+### How Other Model Types Handle Async Inference
 
-3. **Async inference**: The current `test_glm_asr.py` runs synchronously. Should `transcribe()` be async to not block the event loop during generation?
+All existing model types follow an identical pattern:
+
+1. **Lock-based serialization**: `asyncio.Lock` is created in `__main__.py` and passed to handlers
+2. **Sync inference inside async context**: Direct sync calls wrapped in `async with self.model_lock:`
+3. **No thread offloading**: They do NOT use `asyncio.to_thread()` or `run_in_executor()`
+
+```python
+# Pattern used by ALL handlers (faster_whisper, whisper_mps, transformers, kyutai-stt)
+async with self.model_lock:
+    result = self.model.transcribe(...)  # Sync call blocks event loop
+```
+
+**Recommendation**: Follow the same convention for GLM-ASR consistency. Use `asyncio.Lock` and call `transcribe()` synchronously inside the lock.

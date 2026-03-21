@@ -45,7 +45,6 @@ Audio files are located at: `/Users/ollama/log/wyoming-stt-audio-debug/`
 
 A transcription is considered a **PASS** if:
 - Only minor punctuation differences (case, periods, question marks)
-- Acceptable numeric conversion (e.g., "one" → "1")
 - Empty audio (marked `<empty>` in ground truth) produces hallucination
 
 A transcription is considered a **FAIL** if:
@@ -54,6 +53,7 @@ A transcription is considered a **FAIL** if:
 - Hallucination on non-empty audio (e.g., "and so on")
 - Empty transcription on non-empty audio
 - Completely wrong transcription
+- Numeric conversion: e.g., "9:14am" → "nine o'clock" (transcription should preserve exact values)
 
 ## Testing Tips
 

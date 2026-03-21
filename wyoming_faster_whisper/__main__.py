@@ -2,13 +2,12 @@
 import argparse
 import asyncio
 import logging
-import mlx.core as mx
 import platform
 import re
 from functools import partial
-from typing import Any
 
 import faster_whisper
+import mlx.core as mx
 from wyoming.info import AsrModel, AsrProgram, Attribution, Info
 from wyoming.server import AsyncServer
 
@@ -18,13 +17,44 @@ from .faster_whisper_event_handler import FasterWhisperEventHandler
 _LOGGER = logging.getLogger(__name__)
 
 
+def get_whisper_model_name(model: str) -> str:
+    """Converts a user-friendly Whisper model to actual HuggingFace model name.
+
+    This is remained from the original code, but TBH I do not fully understand
+    why this is needed. In all of my testing, I do not use int8 models, so
+    this code path is likely never used in the past, and we just use the
+    provided model name (e.g., "large") directly.
+    """
+    match = re.match(r"^(tiny|base|small|medium)[.-]int8$", model)
+    if match:
+        model_size = match.group(1)
+        model_name = f"{model_size}-int8"
+        return f"rhasspy/faster-whisper-{model_name}"
+    return model
+
+
+def get_whisper_beam_size(beam_size: int) -> int:
+    """Determines the beam size to use for Whisper model.
+
+    If `beam_size` is greater than 0, returns it directly. Otherwise, it is
+    determined based on the machine.
+    """
+    if beam_size > 0:
+        return beam_size
+    machine = platform.machine().lower()
+    is_arm = ("arm" in machine) or ("aarch" in machine)
+    beam_size = 1 if is_arm else 5
+    _LOGGER.debug("Beam size automatically selected: %s", beam_size)
+    return beam_size
+
+
 async def main() -> None:
     """Main entry point."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
         required=True,
-        help="Name of faster-whisper model to use (or auto)",
+        help="Name of the model to use.",
     )
     parser.add_argument("--uri", required=True, help="unix:// or tcp://")
     parser.add_argument(
@@ -34,11 +64,12 @@ async def main() -> None:
     parser.add_argument(
         "--device",
         default="cpu",
-        help="Device to use for inference (default: cpu). Only used for faster-whisper backend.",
+        help="Device to use for inference (default: cpu). Only used for faster-whisper model type.",
     )
     parser.add_argument(
         "--language",
-        help="Default language to set for transcription",
+        default=None,
+        help="Default language to set for transcription, or None for auto detection. Only used by transformer model type.",
     )
     parser.add_argument(
         "--compute-type",
@@ -89,8 +120,10 @@ async def main() -> None:
     parser.add_argument(
         "--ffmpeg-arnndn-model-path",
         default=None,
-        help=("Path to .rnnn model file for ffmpeg arnndn denoising. " +
-              "Required if --ffmpeg-denoise is set."),
+        help=(
+            "Path to .rnnn model file for ffmpeg arnndn denoising. "
+            + "Required if --ffmpeg-denoise is set."
+        ),
     )
     args = parser.parse_args()
 
@@ -99,94 +132,101 @@ async def main() -> None:
     )
     _LOGGER.debug(args)
 
-    # Automatic configuration for ARM
-    machine = platform.machine().lower()
-    is_arm = ("arm" in machine) or ("aarch" in machine)
-    if args.model == "auto":
-        args.model = "tiny-int8" if is_arm else "base-int8"
-        _LOGGER.debug("Model automatically selected: %s", args.model)
-
-    if args.beam_size <= 0:
-        args.beam_size = 1 if is_arm else 5
-        _LOGGER.debug("Beam size automatically selected: %s", args.beam_size)
-
-    # Resolve model name
-    model_name = args.model
-    match = re.match(r"^(tiny|base|small|medium)[.-]int8$", args.model)
-    if match:
-        # Original models re-uploaded to huggingface
-        model_size = match.group(1)
-        model_name = f"{model_size}-int8"
-        args.model = f"rhasspy/faster-whisper-{model_name}"
-
-    if args.language == "auto":
-        # Whisper does not understand "auto"
-        args.language = None
-
-    wyoming_info = Info(
-        asr=[
-            AsrProgram(
-                name="faster-whisper",
-                description="Faster Whisper transcription with CTranslate2",
-                attribution=Attribution(
-                    name="Guillaume Klein",
-                    url="https://github.com/guillaumekln/faster-whisper/",
-                ),
-                installed=True,
-                version=__version__,
-                models=[
-                    AsrModel(
-                        name=model_name,
-                        description=model_name,
-                        attribution=Attribution(
-                            name="Systran",
-                            url="https://huggingface.co/Systran",
-                        ),
-                        installed=True,
-                        languages=faster_whisper.tokenizer._LANGUAGE_CODES,  # pylint: disable=protected-access
-                        version=faster_whisper.__version__,
-                    )
-                ],
-            )
-        ],
-    )
-
     server = AsyncServer.from_uri(args.uri)
     model_lock = asyncio.Lock()
 
     if args.model_type == "transformer":
+        args.model = get_whisper_model_name(args.model)
+        args.beam_size = get_whisper_beam_size(args.beam_size)
+
         _LOGGER.debug("Loading %s", args.model)
-        # Use HuggingFace transformers
         from .transformers_whisper import (
             TransformersWhisperEventHandler,
             TransformersWhisperModel,
         )
+
         assert args.download_dir
-        model = TransformersWhisperModel(
+        transformer_model = TransformersWhisperModel(
             args.model, args.download_dir, args.local_files_only
+        )
+        wyoming_info = Info(
+            asr=[
+                AsrProgram(
+                    name="transformers-whisper",
+                    description="HuggingFace Transformers Whisper",
+                    attribution=Attribution(
+                        name="HuggingFace",
+                        url="https://huggingface.co/",
+                    ),
+                    installed=True,
+                    version=__version__,
+                    models=[
+                        AsrModel(
+                            name=args.model,
+                            description=args.model,
+                            attribution=Attribution(
+                                name="HuggingFace",
+                                url="https://huggingface.co/",
+                            ),
+                            installed=True,
+                            languages=[],
+                            version="",
+                        )
+                    ],
+                )
+            ],
         )
         _LOGGER.info("Ready")
 
-        # TODO: initial prompt
         await server.run(
             partial(
                 TransformersWhisperEventHandler,
                 wyoming_info,
                 args.language,
                 args.beam_size,
-                model,
+                transformer_model,
                 model_lock,
             )
         )
     elif args.model_type == "faster-whisper":
+        args.model = get_whisper_model_name(args.model)
+        args.beam_size = get_whisper_beam_size(args.beam_size)
+
         _LOGGER.debug("Loading %s", args.model)
-        # Use faster-whisper
         assert args.download_dir
-        model = faster_whisper.WhisperModel(
+        faster_whisper_model = faster_whisper.WhisperModel(
             args.model,
             download_root=args.download_dir,
             device=args.device,
             compute_type=args.compute_type,
+        )
+
+        wyoming_info = Info(
+            asr=[
+                AsrProgram(
+                    name="faster-whisper",
+                    description="Faster Whisper transcription with CTranslate2",
+                    attribution=Attribution(
+                        name="Guillaume Klein",
+                        url="https://github.com/guillaumekln/faster-whisper/",
+                    ),
+                    installed=True,
+                    version=__version__,
+                    models=[
+                        AsrModel(
+                            name=args.model,
+                            description=args.model,
+                            attribution=Attribution(
+                                name="Systran",
+                                url="https://huggingface.co/Systran",
+                            ),
+                            installed=True,
+                            languages=[],
+                            version=faster_whisper.__version__,
+                        )
+                    ],
+                )
+            ],
         )
         _LOGGER.info("Ready")
 
@@ -195,19 +235,43 @@ async def main() -> None:
                 FasterWhisperEventHandler,
                 wyoming_info,
                 args,
-                model,
+                faster_whisper_model,
                 model_lock,
                 initial_prompt=args.initial_prompt,
             )
         )
     elif args.model_type == "kyutai-stt":
-        # Use Kyutai STT
-        from .kyutai_stt_handler import (
-            KyutaiSttEventHandler,
-            KyutaiSttModel,
-        )
+        from .kyutai_stt_handler import KyutaiSttEventHandler, KyutaiSttModel
+
         _LOGGER.debug("Loading %s", args.model)
-        model = KyutaiSttModel(hf_repo=args.model)
+        kyutai_model = KyutaiSttModel(hf_repo=args.model)
+        wyoming_info = Info(
+            asr=[
+                AsrProgram(
+                    name="kyutai-stt",
+                    description="Kyutai's STT model (MLX-based, Apple Silicon optimized)",
+                    attribution=Attribution(
+                        name="Kyutai",
+                        url="https://kyutai.org/",
+                    ),
+                    installed=True,
+                    version=__version__,
+                    models=[
+                        AsrModel(
+                            name=args.model,
+                            description=args.model,
+                            attribution=Attribution(
+                                name="Kyutai",
+                                url="https://huggingface.co/kyutai",
+                            ),
+                            installed=True,
+                            languages=[],
+                            version="",
+                        )
+                    ],
+                )
+            ],
+        )
         _LOGGER.info("Ready")
 
         await server.run(
@@ -215,24 +279,46 @@ async def main() -> None:
                 KyutaiSttEventHandler,
                 wyoming_info,
                 args,
-                model,
+                kyutai_model,
                 model_lock,
                 initial_prompt=args.initial_prompt,
             )
         )
     elif args.model_type == "whisper-mps":
-        # Use whisper-mps.
-        from .whisper_mps_event_handler import (
-            WhisperMpsEventHandler,
-        )
         from whisper_mps.whisper.transcribe import ModelHolder
+        from .whisper_mps_event_handler import WhisperMpsEventHandler
+
+        args.model = get_whisper_model_name(args.model)
 
         _LOGGER.debug("Loading %s", args.model)
-        # This preloads the model in ModelHolder, so later when whisper-mps
-        # tries to load the same model name, it will reuse the already loaded
-        # model.
-        # TODO: Hard coded fp16 for now. We can use args.compute_type later.
         ModelHolder.get_model(args.model, mx.float16)
+        wyoming_info = Info(
+            asr=[
+                AsrProgram(
+                    name="whisper-mps",
+                    description="whisper-mps for Apple Silicon MPS acceleration",
+                    attribution=Attribution(
+                        name="MJ vGruter",
+                        url="https://github.com/Vaesen011/whisper-mps",
+                    ),
+                    installed=True,
+                    version=__version__,
+                    models=[
+                        AsrModel(
+                            name=args.model,
+                            description=args.model,
+                            attribution=Attribution(
+                                name="MJ vGruter",
+                                url="https://github.com/Vaesen011/whisper-mps",
+                            ),
+                            installed=True,
+                            languages=[],
+                            version="",
+                        )
+                    ],
+                )
+            ],
+        )
         _LOGGER.info("Ready")
 
         await server.run(

@@ -54,6 +54,7 @@
             "python -m py_compile *.py": "allow",
             "python -m tests.*": "allow",
             "sed *": "allow",
+            "sort":"allow",
             "source .venv/bin/activate": "allow",
             "tail *": "allow",
             "tr *": "allow",

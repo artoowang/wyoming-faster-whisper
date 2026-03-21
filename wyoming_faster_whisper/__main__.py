@@ -336,8 +336,6 @@ async def main() -> None:
         _LOGGER.debug("Loading %s", args.model)
         glm_model = GlmAsrModel(
             args.model,
-            cache_dir=args.download_dir,
-            local_files_only=args.local_files_only,
         )
         wyoming_info = Info(
             asr=[
@@ -345,8 +343,8 @@ async def main() -> None:
                     name="glm-asr",
                     description="GLM-ASR speech recognition model",
                     attribution=Attribution(
-                        name="THUDM",
-                        url="https://github.com/THUDM/GLM-ASR",
+                        name="zai-org",
+                        url="https://github.com/zai-org/GLM-ASR",
                     ),
                     installed=True,
                     version=__version__,
@@ -355,8 +353,8 @@ async def main() -> None:
                             name=args.model,
                             description=args.model,
                             attribution=Attribution(
-                                name="THUDM",
-                                url="https://huggingface.co/zai-org",
+                                name="zai-org",
+                                url="https://github.com/zai-org/GLM-ASR",
                             ),
                             installed=True,
                             languages=[],

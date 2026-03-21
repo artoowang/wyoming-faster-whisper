@@ -5,8 +5,7 @@ import logging
 import os
 import tempfile
 import wave
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 import torch
 from transformers import AutoModel, AutoProcessor
@@ -25,22 +24,18 @@ class GlmAsrModel:
     def __init__(
         self,
         repo_id: str,
-        cache_dir: Optional[Union[str, Path]] = None,
-        local_files_only: bool = False,
     ) -> None:
         """Initialize GLM-ASR model."""
-        self.processor = AutoProcessor.from_pretrained(
-            repo_id, cache_dir=cache_dir, local_files_only=local_files_only
-        )
+        self.processor = AutoProcessor.from_pretrained(repo_id, local_files_only=True)
         self.model = AutoModel.from_pretrained(
             repo_id,
             dtype=torch.bfloat16,
             device_map="auto",
-            cache_dir=cache_dir,
-            local_files_only=local_files_only,
+            local_files_only=True,
         )
-        self.model.eval()
+        # Store the actual device used by the model.
         self.device = self.model.device
+        _LOGGER.info(f"GLM-ASR model loaded on device: {self.device}")
 
     def transcribe(self, wav_path: str, system_prompt: str) -> str:
         """Returns transcription for WAV file.
@@ -67,6 +62,8 @@ class GlmAsrModel:
         inputs = inputs.to(self.device, dtype=torch.bfloat16)
         input_length = inputs.input_ids.shape[1]
 
+        # The official example does not do this: https://github.com/zai-org/GLM-ASR
+        # But OpenCode suggests it.
         with torch.no_grad():
             outputs = self.model.generate(**inputs, max_new_tokens=128, do_sample=False)
             transcription = self.processor.batch_decode(

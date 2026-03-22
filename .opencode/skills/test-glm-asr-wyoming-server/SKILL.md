@@ -18,10 +18,8 @@ Use this skill when you need to:
 
 ## Prerequisites
 
-Ensure the virtual environment is set up:
-```bash
-source .venv/bin/activate
-```
+Use `initial_prompt.md` for the default initial prompt, unless the user
+specifies something else.
 
 ## Workflow
 
@@ -29,9 +27,6 @@ source .venv/bin/activate
 ```bash
 source .venv/bin/activate && script/run --model "zai-org/GLM-ASR-Nano-2512" --model-type glm-asr --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <prompt> >/tmp/log 2>&1 &
 ```
-
-The current prompt is
-`"The following is a transcription of a user command issued to a home assistant. Common command includes 'What time is it', 'Timer, XX minutes', 'Turn on Morning Scene', 'Turn off Mos Eisley'. Common device names include 'Mos Eisley', 'Morning Scene', 'Evening Scene', 'Night Scene'"`
 
 1. Look at the log every second, until the log says "Ready".
 

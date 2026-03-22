@@ -24,7 +24,7 @@ specifies something else.
 source .venv/bin/activate
 
 # Run locally (whisper-mps, avoid port 10300 since that is used by the system daemon)
-script/run --model large --model-type whisper-mps --language en --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <initial_prompt>
+script/run --model large --model-type whisper-mps --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <initial_prompt>
 
 # Test a running server at port 10301
 python -m tests.test_wyoming --ip localhost --port 10301 --audio_file <audio_file>

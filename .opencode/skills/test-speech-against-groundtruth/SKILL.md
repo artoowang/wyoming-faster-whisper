@@ -18,21 +18,33 @@ Use this skill when you need to:
 
 ## Prerequisites
 
-See AGENTS.md for starting a Wyoming STT server. Run it on port 10301.
+Start the backend. Following are the backends that can be used to test.
+Ask user which one to use if not specified.
 
-Backends that can be used to test:
-- `whisper-mps`
+Use `initial_prompt.md` for the default initial prompt, unless the user
+specifies something else.
 
-## Test a Single Audio File
+### `whisper-mps`
 
 ```bash
-python -m tests.test_wyoming --ip localhost --port 10301 --audio_file <path_to_wav>
+source .venv/bin/activate && script/run --model large --model-type whisper-mps --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <prompt> >/tmp/log 2>&1 &
+```
+
+### `glm-asr`
+
+```bash
+source .venv/bin/activate && script/run --model "zai-org/GLM-ASR-Nano-2512" --model-type glm-asr --uri "tcp://0.0.0.0:10301" --log-format "%(asctime)s [%(levelname)s] %(name)s: %(message)s" --debug --initial-prompt <prompt> >/tmp/log 2>&1 &
 ```
 
 ## Batch Test Against Ground Truths
 
 ```bash
 python -m tests.batch_test_ground_truths --ip localhost --port 10301
+```
+
+## After the test, remember to kill the server
+```bash
+pkill -u "$USER" -f wyoming_faster_whisper
 ```
 
 ## Ground Truths

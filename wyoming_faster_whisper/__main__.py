@@ -169,7 +169,7 @@ async def main() -> None:
                                 url="https://huggingface.co/",
                             ),
                             installed=True,
-                            languages=[],
+                            languages=["en"],
                             version="",
                         )
                     ],
@@ -221,7 +221,7 @@ async def main() -> None:
                                 url="https://huggingface.co/Systran",
                             ),
                             installed=True,
-                            languages=[],
+                            languages=["en"],
                             version=faster_whisper.__version__,
                         )
                     ],
@@ -265,7 +265,7 @@ async def main() -> None:
                                 url="https://huggingface.co/kyutai",
                             ),
                             installed=True,
-                            languages=[],
+                            languages=["en"],
                             version="",
                         )
                     ],
@@ -312,7 +312,7 @@ async def main() -> None:
                                 url="https://github.com/Vaesen011/whisper-mps",
                             ),
                             installed=True,
-                            languages=[],
+                            languages=["en"],
                             version="",
                         )
                     ],
@@ -357,7 +357,7 @@ async def main() -> None:
                                 url="https://github.com/zai-org/GLM-ASR",
                             ),
                             installed=True,
-                            languages=[],
+                            languages=["en"],
                             version="",
                         )
                     ],

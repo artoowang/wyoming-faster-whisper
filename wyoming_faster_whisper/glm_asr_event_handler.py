@@ -3,7 +3,9 @@
 import asyncio
 import logging
 import os
+import shutil
 import tempfile
+import time
 import wave
 from typing import Optional
 
@@ -82,6 +84,7 @@ class GlmAsrEventHandler(AsyncEventHandler):
         model: GlmAsrModel,
         model_lock: asyncio.Lock,
         *args,
+        audio_debug_dir: Optional[str] = None,
         initial_prompt: Optional[str] = None,
         **kwargs,
     ) -> None:
@@ -94,6 +97,11 @@ class GlmAsrEventHandler(AsyncEventHandler):
         self._wav_dir = tempfile.TemporaryDirectory()
         self._wav_path = os.path.join(self._wav_dir.name, "speech.wav")
         self._wav_file: Optional[wave.Wave_write] = None
+
+        self._wav_debug_dir = audio_debug_dir
+        if self._wav_debug_dir is not None:
+            # Ensure the debug directory exists
+            os.makedirs(self._wav_debug_dir, exist_ok=True)
 
     async def handle_event(self, event: Event) -> bool:
         if AudioChunk.is_type(event.type):
@@ -119,6 +127,12 @@ class GlmAsrEventHandler(AsyncEventHandler):
 
             async with self.model_lock:
                 text = self.model.transcribe(self._wav_path, self.initial_prompt)
+
+            if self._wav_debug_dir is not None:
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                dst_path = os.path.join(self._wav_debug_dir, f"debug_{timestamp}.wav")
+                shutil.copy2(self._wav_path, dst_path)
+                _LOGGER.debug("WAV debug copy written to %s", dst_path)
 
             _LOGGER.info(text)
 

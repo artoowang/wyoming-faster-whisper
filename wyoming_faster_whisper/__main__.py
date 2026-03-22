@@ -372,6 +372,7 @@ async def main() -> None:
                 wyoming_info,
                 glm_model,
                 model_lock,
+                audio_debug_dir=args.audio_debug_dir,
                 initial_prompt=args.initial_prompt,
             )
         )

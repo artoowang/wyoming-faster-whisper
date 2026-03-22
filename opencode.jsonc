@@ -57,7 +57,7 @@
             "lsof *": "allow",
             "mypy *": "allow",
             "nc *": "allow",
-            "pkill -u * -f wyoming_faster_whisper" : "allow",
+            "pkill -u * -f wyoming_faster_whisper *" : "allow",
             "python -m py_compile *.py": "allow",
             "python -m tests.*": "allow",
             "script/run *": "allow",

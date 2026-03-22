@@ -3,12 +3,11 @@
 import asyncio
 import logging
 import os
-import shutil
-import tempfile
 import time
 import wave
-from typing import Optional
+from typing import List, Optional
 
+import numpy as np
 import torch
 from transformers import AutoModel, AutoProcessor
 from wyoming.asr import Transcribe, Transcript
@@ -18,6 +17,10 @@ from wyoming.info import Describe, Info
 from wyoming.server import AsyncEventHandler
 
 _LOGGER = logging.getLogger(__name__)
+
+_SAMPLE_RATE = 16000
+_SAMPLE_WIDTH = 2
+_CHANNELS = 1
 
 
 class GlmAsrModel:
@@ -39,16 +42,16 @@ class GlmAsrModel:
         self.device = self.model.device
         _LOGGER.info(f"GLM-ASR model loaded on device: {self.device}")
 
-    def transcribe(self, wav_path: str, system_prompt: str) -> str:
-        """Returns transcription for WAV file.
+    def transcribe(self, audio_float: np.ndarray, system_prompt: str) -> str:
+        """Returns transcription for audio array.
 
-        WAV file must be 16Khz 16-bit mono audio.
+        Audio array must be float32 with values in [-1, 1], assumed 16Khz mono.
         """
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "audio", "url": wav_path},
+                    {"type": "audio", "audio": audio_float},
                     {"type": "text", "text": system_prompt},
                 ],
             }
@@ -94,9 +97,7 @@ class GlmAsrEventHandler(AsyncEventHandler):
         self.model = model
         self.model_lock = model_lock
         self.initial_prompt = initial_prompt or ""
-        self._wav_dir = tempfile.TemporaryDirectory()
-        self._wav_path = os.path.join(self._wav_dir.name, "speech.wav")
-        self._wav_file: Optional[wave.Wave_write] = None
+        self._audio_chunks: List[np.ndarray] = []
 
         self._wav_debug_dir = audio_debug_dir
         if self._wav_debug_dir is not None:
@@ -107,32 +108,53 @@ class GlmAsrEventHandler(AsyncEventHandler):
         if AudioChunk.is_type(event.type):
             chunk = AudioChunk.from_event(event)
 
-            if self._wav_file is None:
-                self._wav_file = wave.open(self._wav_path, "wb")
-                self._wav_file.setframerate(chunk.rate)
-                self._wav_file.setsampwidth(chunk.width)
-                self._wav_file.setnchannels(chunk.channels)
+            if chunk.rate != _SAMPLE_RATE:
+                _LOGGER.error(
+                    "Only supports 16kHz audio, but received rate %s", chunk.rate
+                )
+                return False
+            if chunk.width != _SAMPLE_WIDTH:
+                _LOGGER.error(
+                    "Only supports 16-bit audio, but received width %s", chunk.width
+                )
+                return False
+            if chunk.channels != _CHANNELS:
+                _LOGGER.error(
+                    "Only supports mono audio, but received %s channels",
+                    chunk.channels,
+                )
+                return False
 
-            self._wav_file.writeframes(chunk.audio)
+            audio_array = np.frombuffer(chunk.audio, dtype=np.int16)
+            self._audio_chunks.append(audio_array)
             return True
 
         if AudioStop.is_type(event.type):
             _LOGGER.debug(
                 "Audio stopped. Transcribing with prompt=%s", self.initial_prompt
             )
-            assert self._wav_file is not None
 
-            self._wav_file.close()
-            self._wav_file = None
+            if not self._audio_chunks:
+                _LOGGER.error("No audio chunks received")
+                return False
 
-            async with self.model_lock:
-                text = self.model.transcribe(self._wav_path, self.initial_prompt)
+            audio_int16 = np.concatenate(self._audio_chunks)
+            self._audio_chunks.clear()
 
             if self._wav_debug_dir is not None:
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
                 dst_path = os.path.join(self._wav_debug_dir, f"debug_{timestamp}.wav")
-                shutil.copy2(self._wav_path, dst_path)
+                with wave.open(dst_path, "wb") as wf:
+                    wf.setnchannels(_CHANNELS)
+                    wf.setsampwidth(_SAMPLE_WIDTH)
+                    wf.setframerate(_SAMPLE_RATE)
+                    wf.writeframes(audio_int16.tobytes())
                 _LOGGER.debug("WAV debug copy written to %s", dst_path)
+
+            audio_float = audio_int16.astype(np.float32) / 32768.0
+
+            async with self.model_lock:
+                text = self.model.transcribe(audio_float, self.initial_prompt)
 
             _LOGGER.info(text)
 
@@ -147,6 +169,8 @@ class GlmAsrEventHandler(AsyncEventHandler):
                 _LOGGER.debug(
                     "Language hint received but ignored for GLM-ASR (auto-detects)"
                 )
+            # Clears the audio chunks in preparation for the AudioChunk events that will follow.
+            self._audio_chunks.clear()
             return True
 
         if Describe.is_type(event.type):

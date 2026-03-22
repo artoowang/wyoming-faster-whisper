@@ -21,6 +21,7 @@
 
         "skill": {
             "*": "ask",
+            "test-glm-asr-wyoming-server": "allow",
             "test-speech-against-groundtruth": "allow",
         },
 
@@ -42,6 +43,7 @@
         "bash": {
             "*": "ask",
             "black *": "allow",
+            "break": "allow",
             "cat *": "allow",
             "echo *": "allow",
             "fold *": "allow",
@@ -55,9 +57,12 @@
             "lsof *": "allow",
             "mypy *": "allow",
             "nc *": "allow",
+            "pkill -u * -f wyoming_faster_whisper" : "allow",
             "python -m py_compile *.py": "allow",
             "python -m tests.*": "allow",
+            "script/run *": "allow",
             "sed *": "allow",
+            "sleep *": "allow",
             "sort":"allow",
             "source .venv/bin/activate": "allow",
             "tail *": "allow",

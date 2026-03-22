@@ -1,6 +1,9 @@
 import argparse
-import pdb
+import math
+import wave
 import torch
+import numpy as np
+from scipy.signal import resample_poly
 from transformers import AutoModel, AutoProcessor
 
 parser = argparse.ArgumentParser()
@@ -27,13 +30,29 @@ model = AutoModel.from_pretrained(repo_id, dtype=torch.bfloat16, device_map=devi
 device = model.device
 print(f"Device type: {device}")
 
+audio_float = None
+with wave.open(args.audio_file, "rb") as wav:
+    wav_rate = wav.getframerate()
+    n_frames = wav.getnframes()
+    audio_bytes = wav.readframes(n_frames)
+    audio_int16 = np.frombuffer(audio_bytes, dtype=np.int16)
+    audio_float = audio_int16.astype(np.float32) / 32768.0
+
+    if wav_rate != 16000:
+        print(f"Resampling from {wav_rate}Hz to 16000Hz")
+        g = math.gcd(16000, wav_rate)
+        up, down = 16000 // g, wav_rate // g
+        audio_float = resample_poly(audio_float, up, down)
+
+assert audio_float is not None, "Failed to load audio"
+
 messages = [
     {
         "role": "user",
         "content": [
             {
                 "type": "audio",
-                "url": args.audio_file,
+                "audio": audio_float,
             },
             {
                 "type": "text",
